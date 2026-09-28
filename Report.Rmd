@@ -1,0 +1,63 @@
+---
+title: "CS 108 Statistics — Project 1"
+date: "2026-09-27"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  
+---
+
+```
+{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                      fig.width = 8, fig.height = 5)
+```
+
+# 5. Numerical Variables by Categories
+
+In this section, we investigate whether the distribution of planet radius differs across different discovery methods. The numerical variable is pl_rade, measured in Earth radii, and the categorical variable is discoverymethod.
+
+## 5.1 Planet Radius by Discovery Method
+We first calculate descriptive statistics for planet radius within each discovery method.
+```{r load-data}
+library(readr)
+library(ggplot2)
+library(knitr)
+library(dplyr)
+
+exo <- read_csv("PS_2026.09.28_04.07.20.csv",, comment = "#",  show_col_types = FALSE)
+```
+
+```{r}
+aggregate(pl_orbper ~ disc_locale, data = exo, FUN = mean, na.rm = TRUE)
+aggregate(pl_orbper ~ disc_locale, data = exo, FUN = median, na.rm = TRUE)
+boxplot(pl_orbper ~ disc_locale,
+        data = exo,
+        main = "Orbital Period by Discovery Locale",
+        xlab = "Discovery Locale",
+        ylab = "Orbital Period (days)")
+table(exo$discoverymethod, exo$disc_locale)
+ggplot(exo, aes(x = discoverymethod, fill = disc_locale)) +
+  geom_bar() +
+  labs(
+    title = "Discovery Method by Observation Location",
+    x = "Discovery Method",
+    y = "Number of Exoplanets",
+    fill = "Discovery Location"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+names(exo)
+
+barplot(table(exo$discoverymethod, exo$disc_year), col=rainbow(10), beside = TRUE)
+
+```
+
+
+## 5.2 Orbital Period by Discovery Method
+ We next investigate whether orbital periods differ across discovery
+methods.
+
+

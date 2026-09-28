@@ -23,15 +23,13 @@ We first calculate descriptive statistics for planet radius within each discover
 ```{r load-data}
 library(readr)
 library(ggplot2)
-library(knitr)
 library(dplyr)
 
 exo <- read_csv("PS_2026.09.28_04.07.20.csv",, comment = "#",  show_col_types = FALSE)
 ```
 
 ```{r}
-aggregate(pl_orbper ~ disc_locale, data = exo, FUN = mean, na.rm = TRUE)
-aggregate(pl_orbper ~ disc_locale, data = exo, FUN = median, na.rm = TRUE)
+
 boxplot(pl_orbper ~ disc_locale,
         data = exo,
         main = "Orbital Period by Discovery Locale",

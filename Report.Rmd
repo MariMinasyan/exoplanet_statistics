@@ -46,13 +46,6 @@ ggplot(exo, aes(x = discoverymethod, fill = disc_locale)) +
   ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
-```{r}
-names(exo)
-
-barplot(table(exo$discoverymethod, exo$disc_year), col=rainbow(10), beside = TRUE)
-
-```
-
 
 ## 5.2 Orbital Period by Discovery Method
  We next investigate whether orbital periods differ across discovery

@@ -14,41 +14,156 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
                       fig.width = 8, fig.height = 5)
 ```
 
-# 5. Numerical Variables by Categories
-
-In this section, we investigate whether the distribution of planet radius differs across different discovery methods. The numerical variable is pl_rade, measured in Earth radii, and the categorical variable is discoverymethod.
-
-## 5.1 Planet Radius by Discovery Method
-We first calculate descriptive statistics for planet radius within each discovery method.
-```{r load-data}
+```{r load-data, echo=TRUE}
 library(readr)
 library(ggplot2)
 library(dplyr)
 
-exo <- read_csv("PS_2026.09.28_04.07.20.csv",, comment = "#",  show_col_types = FALSE)
+exo <- read_csv("ExoplanetsDataset.csv", comment = "#",  show_col_types = FALSE)
 ```
+
+# 5. Numerical Variables by Categories
+
+## 5.1 Planet Radius (pl_rade) by Discovery Method (discoverymethod)
+ - **Differences in Location**: Planets detected via **Transit** show significantly smaller central tendency metrics (Median $\approx 2.1\ R_\oplus$) compared to those discovered by **Direct Imaging** (Median $> 10\ R_\oplus$) and **Radial Velocity**. Transit surveys excel at finding Earth-to-Neptune sized candidates blocking faint stellar light, whereas Direct Imaging detects young, self-luminous giant planets.
+ - **Differences in Variability and Shape**: The Transit radius distribution is positively skewed with a prominent concentration around Super-Earths/Sub-Neptunes ($1.5 - 3.5\ R_\oplus$) and a thin right-side tail. Radial Velocity exhibits broader spread (IQR) across planet radii due to mass-based detection filters.
 
 ```{r}
+exo_clean <- exo %>% filter(default_flag == 1)
 
-boxplot(pl_orbper ~ disc_locale,
-        data = exo,
-        main = "Orbital Period by Discovery Locale",
-        xlab = "Discovery Locale",
-        ylab = "Orbital Period (days)")
-table(exo$discoverymethod, exo$disc_locale)
-ggplot(exo, aes(x = discoverymethod, fill = disc_locale)) +
-  geom_bar() +
-  labs(
-    title = "Discovery Method by Observation Location",
-    x = "Discovery Method",
-    y = "Number of Exoplanets",
-    fill = "Discovery Location"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# ----------------------------------------------------------------------
+#  Log Planet Radius (pl_rade) across Discovery Method (discoverymethod)
+# ----------------------------------------------------------------------
+# Categorical grouping: Top 4 most frequent discovery methods vs Other
+top_methods <- exo_clean %>%
+  count(discoverymethod) %>%
+  top_n(4, n) %>%
+  pull(discoverymethod)
+
+exo_clean <- exo_clean %>%
+  mutate(disc_method_cat = ifelse(discoverymethod %in% top_methods, discoverymethod, "Other"))
+
+# Grouped Summary Table: Location and Spread
+radius_by_method <- exo_clean %>%
+  filter(!is.na(pl_rade)) %>%
+  group_by(disc_method_cat) %>%
+  summarise(
+    Count = n(),
+    Mean = mean(pl_rade, na.rm = TRUE),
+    Median = median(pl_rade, na.rm = TRUE),
+    SD = sd(pl_rade, na.rm = TRUE),
+    IQR = IQR(pl_rade, na.rm = TRUE),
+    Min = min(pl_rade, na.rm = TRUE),
+    Max = max(pl_rade, na.rm = TRUE)
+  )
+radius_by_method
+
+
+# Side-by-side Boxplot (Log10 scale due to skewness)
+ggplot(exo_clean %>% filter(!is.na(pl_rade)), 
+       aes(x = disc_method_cat, y = pl_rade, fill = disc_method_cat)) +
+  geom_boxplot(alpha = 0.7, outlier.alpha = 0.3) +
+  scale_y_log10() +
+  labs(title = "Planet Radius Distribution by Discovery Method",
+       x = "Discovery Method",
+       y = "Planet Radius (Earth Radii, Log Scale)",
+       fill = "Method") +
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
-## 5.2 Orbital Period by Discovery Method
- We next investigate whether orbital periods differ across discovery
-methods.
 
+## 5.2 Orbital Period (pl_orbper) across Stellar Multiplicity (sy_snum)
+- **Differences in Location**: Single-star host systems (sy_snum = 1) show a median orbital period close to $10 - 20\text{ days}$, heavily influenced by close-in transit survey bias. Binary and hierarchical triple systems (sy_snum >= 2) show slightly longer median orbital periods, as close-in planetary orbits in tight binary systems are dynamically unstable.
+- **Differences in Variability and Shape**: Single-star systems exhibit a broader overall distribution spanning orders of magnitude ($0.5\text{ days}$ to $>10,000\text{ days}$). Multi-star systems show a narrower, right-shifted density profile due to truncation of stable orbital resonances caused by secondary stellar gravitational perturbations.
+# ----------------------------------------------------------------------
+```{r}
+exo_clean <- exo_clean %>%
+  mutate(snum_cat = factor(case_when(
+    sy_snum == 1 ~ "Single Star",
+    sy_snum == 2 ~ "Binary Star System",
+    sy_snum >= 3 ~ "Multi-Star (3+)",
+    TRUE ~ NA_character_
+  )))
+
+period_by_snum <- exo_clean %>%
+  filter(!is.na(pl_orbper) & !is.na(snum_cat)) %>%
+  group_by(snum_cat) %>%
+  summarise(
+    Count = n(),
+    Mean = mean(pl_orbper, na.rm = TRUE),
+    Median = median(pl_orbper, na.rm = TRUE),
+    SD = sd(pl_orbper, na.rm = TRUE),
+    IQR = IQR(pl_orbper, na.rm = TRUE)
+  )
+print(period_by_snum)
+
+# Grouped Density Plot
+ggplot(exo_clean %>% filter(!is.na(pl_orbper) & !is.na(snum_cat)), 
+       aes(x = pl_orbper, fill = snum_cat)) +
+  geom_density(alpha = 0.4) +
+  scale_x_log10() +
+  labs(title = "Density Distribution of Orbital Period by Stellar Multiplicity",
+       x = "Orbital Period (Days, Log Scale)",
+       y = "Density",
+       fill = "Stellar System") +
+  theme_minimal()
+
+```
+
+# 6: Relationships Between Numerical Variables
+## 6.1 Distance from Star (pl_orbsmax) vs. Orbital Period (pl_orbper)
+- **Direction and Strength**: There is a strong, positive relationship between a planet's distance from its star and its orbital period. As distance increases, orbital period increases. The calculated Pearson correlation coefficient is positive and indicates a strong association once plotted on a logarithmic scale.
+- **Form and Outliers**: The scatter plot shows a clear straight line when using logarithmic scales for both axes. This shows that the two variables follow a steady proportional pattern (Kepler's Third Law: planets further from their star take longer to complete an orbit). Outliers are minimal, located mostly at extreme distances over $100\text{ AU}$.
+
+```{r}
+# Semi-Major Axis vs. Orbital Period
+
+# Filter out missing values
+pair1 <- exo_clean %>% 
+  filter(!is.na(pl_orbsmax) & !is.na(pl_orbper))
+
+# Calculate Pearson Correlation
+cor_pair1 <- cor(pair1$pl_orbsmax, pair1$pl_orbper, method = "pearson")
+cat("Correlation between Distance and Period:", round(cor_pair1, 2), "\n")
+
+# Simple Scatterplot
+ggplot(pair1, aes(x = pl_orbsmax, y = pl_orbper)) +
+  geom_point(alpha = 0.5, color = "steelblue") +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  labs(
+    title = "Orbital Period vs. Distance from Host Star",
+    x = "Distance from Star (AU, Log Scale)",
+    y = "Orbital Period (Days, Log Scale)"
+  ) +
+  theme_minimal()
+```
+
+## 6.2 Planet Mass (pl_bmasse) vs. Planet Radius (pl_rade)
+- **Direction and Strength**: There is a positive relationship between planet mass and planet radius. In general, heavier planets tend to be larger in size. The overall correlation is positive, showing that mass and size grow together for small-to-medium planets.
+- **Form and Outliers**: On log-log scales, the scatterplot exhibits an upward trend for smaller terrestrial planets and super-Earths. However, for very high-mass gas giants, the curve flattens out—meaning heavy gas planets get denser rather than larger because gravity compresses the gas. Outliers primarily occur among extremely large, low-mass "puffy" gas planets.
+```{r}
+# Filter out missing values
+pair2 <- exo_clean %>% 
+  filter(!is.na(pl_bmasse) & !is.na(pl_rade))
+
+# Calculate Pearson Correlation
+cor_pair2 <- cor(pair2$pl_bmasse, pair2$pl_rade, method = "pearson")
+cat("Correlation between Mass and Radius:", round(cor_pair2, 2), "\n")
+
+# Simple Scatterplot
+ggplot(pair2, aes(x = pl_bmasse, y = pl_rade)) +
+  geom_point(alpha = 0.5, color = "darkgreen") +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_smooth(method = "lm", color = "orange", se = FALSE) +
+  labs(
+    title = "Planet Mass vs. Planet Radius",
+    x = "Planet Mass (Earth Mass, Log Scale)",
+    y = "Planet Radius (Earth Radii, Log Scale)"
+  ) +
+  theme_minimal()
+```
 

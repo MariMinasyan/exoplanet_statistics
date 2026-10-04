@@ -14,12 +14,40 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
                       fig.width = 8, fig.height = 5)
 ```
 
+# 2 Data Preparation
+## 2.1 Data Import and Structure Examination
+The dataset was imported into R from the NASA Exoplanet Archive Planetary Systems (PS) table. The dataset initially contains tens of thousands of rows and multiple columns capturing orbital, stellar, and physical planetary attributes. Inspecting the data structure using str() confirms that numerical variables (such as planet radius pl_rade, orbital period pl_orbper, mass pl_bmasse, and semi-major axis pl_orbsmax) are stored as double-precision floating-point numbers (num), while categorical identifiers (such as discovery method discoverymethod and stellar multiplicity sy_snum) were initially read as character or integer types.
+
 ```{r load-data, echo=TRUE}
 library(readr)
 library(ggplot2)
 library(dplyr)
 
 exo <- read_csv("ExoplanetsDataset.csv", comment = "#",  show_col_types = FALSE)
+```
+## 2.2 Missing Values, Inconsistencies, and Unusual Observations
+- **Missing Value Analysis**: A missing value audit revealed varying completion rates across attributes. Fundamental survey discovery metrics like pl_orbper (orbital period) exhibit low missing rates ($<10\%$), whereas secondary physical parameters like pl_bmasse (mass) and pl_rade (radius) display substantial missingness ($>40\%$). This occurs because specific discovery techniques constrain certain properties better than others (e.g., Transit provides radius, whereas Radial Velocity provides minimum mass).
+- **Data Integrity Checks**: Sanity checks confirmed that physical attributes contain no non-physical zero or negative values.
+- **Handling Duplicate Entries**: The primary Planetary Systems table contains multiple published parameter sets for single planets across different scientific papers. Filtering by default_flag == 1 isolates the single default, peer-reviewed parameter set for each distinct exoplanet, preventing duplicate weighting in subsequent EDA steps.
+
+```{r}
+# Preview column names and structure
+str(exo)
+
+# Count missing values per key variable
+missing_summary <- colSums(is.na(exo))
+print("Missing Value Counts per Variable:")
+print(missing_summary)
+
+# Calculate percentage of missing values per variable
+missing_pct <- round(colMeans(is.na(exo)) * 100, 2)
+print("Missing Value Percentage (%):")
+print(missing_pct)
+```
+
+## 2.3 Data Type Conversions and Explicit Explanations
+``` {r}
+
 ```
 
 # 5. Numerical Variables by Categories

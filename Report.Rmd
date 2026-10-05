@@ -320,8 +320,7 @@ eqt_q3 <- quantile(eqt, 0.75)
 eqt_iqr <- IQR(eqt)
 eqt_sd <- sd(eqt)
 
-eqt_skewness <- mean((eqt - eqt_mean)^3) /
-  (mean((eqt - eqt_mean)^2))^1.5
+
 
 cat("Number of observations:", length(eqt), "\n")
 cat("Mean:", round(eqt_mean, 2), "K\n")
@@ -333,7 +332,6 @@ cat("Q1:", round(eqt_q1, 2), "K\n")
 cat("Q3:", round(eqt_q3, 2), "K\n")
 cat("IQR:", round(eqt_iqr, 2), "K\n")
 cat("Standard deviation:", round(eqt_sd, 2), "K\n")
-cat("Skewness:", round(eqt_skewness, 2), "\n")
 ```
 
 The mean is higher than the median and the skewness is positive, suggesting a right-skewed distribution.
@@ -481,14 +479,7 @@ imaging_median <- median(imaging)
 imaging_sd <- sd(imaging)
 imaging_iqr <- IQR(imaging)
 
-transit_skew <- mean((transit - mean(transit))^3) /
-  (mean((transit - mean(transit))^2))^1.5
 
-rv_skew <- mean((rv - mean(rv))^3) /
-  (mean((rv - mean(rv))^2))^1.5
-
-imaging_skew <- mean((imaging - mean(imaging))^3) /
-  (mean((imaging - mean(imaging))^2))^1.5
 
 group_summary <- data.frame(
   Method = c(
@@ -520,11 +511,6 @@ group_summary <- data.frame(
     transit_iqr,
     rv_iqr,
     imaging_iqr
-  ),
-  Skewness = c(
-    transit_skew,
-    rv_skew,
-    imaging_skew
   )
 )
 

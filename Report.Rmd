@@ -24,37 +24,58 @@ library(ggplot2)
 library(dplyr)
 
 exo <- read_csv("ExoplanetsDataset.csv", comment = "#",  show_col_types = FALSE)
+
+dim(exo)
+names(exo)
+str(exo)
 ```
 ## 2.2 Missing Values, Inconsistencies, and Unusual Observations
-- **Missing Value Analysis**: A missing value audit revealed varying completion rates across attributes. Fundamental survey discovery metrics like pl_orbper (orbital period) exhibit low missing rates ($<10\%$), whereas secondary physical parameters like pl_bmasse (mass) and pl_rade (radius) display substantial missingness ($>40\%$). This occurs because specific discovery techniques constrain certain properties better than others (e.g., Transit provides radius, whereas Radial Velocity provides minimum mass).
-- **Data Integrity Checks**: Sanity checks confirmed that physical attributes contain no non-physical zero or negative values.
-- **Handling Duplicate Entries**: The primary Planetary Systems table contains multiple published parameter sets for single planets across different scientific papers. Filtering by default_flag == 1 isolates the single default, peer-reviewed parameter set for each distinct exoplanet, preventing duplicate weighting in subsequent EDA steps.
-
+- **Missing Value Analysis**: The missing-value analysis showed that the completeness of variables differs substantially. Orbital period has fewer missing values than several physical properties such as planet mass and radius. Because missingness varies across variables, analyses involving these variables use only observations for which the required variables are available.
 ```{r}
-# Preview column names and structure
-str(exo)
+key_vars <- c(
+  "pl_rade",
+  "pl_orbper",
+  "pl_bmasse",
+  "pl_orbsmax",
+  "discoverymethod",
+  "sy_snum"
+)
 
-# Count missing values per key variable
-missing_summary <- colSums(is.na(exo))
-print("Missing Value Counts per Variable:")
-print(missing_summary)
+missing_summary <- data.frame(
+  Variable = key_vars,
+  Missing = sapply(exo[key_vars], function(x) sum(is.na(x))),
+  Missing_Percent = round(
+    sapply(exo[key_vars], function(x) mean(is.na(x))) * 100, 2
+  )
+)
 
-# Calculate percentage of missing values per variable
-missing_pct <- round(colMeans(is.na(exo)) * 100, 2)
-print("Missing Value Percentage (%):")
-print(missing_pct)
+missing_summary
 ```
+- **Data Integrity Checks**: Sanity checks confirmed that physical attributes contain no non-physical zero or negative values.
+```{r}
+sum(exo$pl_rade <= 0, na.rm = TRUE)
+sum(exo$pl_orbper <= 0, na.rm = TRUE)
+sum(exo$pl_bmasse <= 0, na.rm = TRUE)
+sum(exo$pl_orbsmax <= 0, na.rm = TRUE)
+```
+- **Handling Duplicate Entries**: The primary Planetary Systems table contains multiple published parameter sets for single planets across different scientific papers. Filtering by default_flag == 1 isolates the single default, peer-reviewed parameter set for each distinct exoplanet, preventing duplicate weighting in subsequent EDA steps.
+```{r}
+sum(exo$default_flag == 1, na.rm = TRUE)
+```
+
 
 ## 2.3 Data Type Conversions and Explicit Explanations
 ``` {r}
 
 ```
 
+
 # 5. Numerical Variables by Categories
 
 ## 5.1 Planet Radius (pl_rade) by Discovery Method (discoverymethod)
- - **Differences in Location**: Planets detected via **Transit** show significantly smaller central tendency metrics (Median $\approx 2.1\ R_\oplus$) compared to those discovered by **Direct Imaging** (Median $> 10\ R_\oplus$) and **Radial Velocity**. Transit surveys excel at finding Earth-to-Neptune sized candidates blocking faint stellar light, whereas Direct Imaging detects young, self-luminous giant planets.
+ - **Differences in Location**: **Transit** planets have a lower median radius than the other major discovery-method groups. Transit surveys excel at finding Earth-to-Neptune sized candidates blocking faint stellar light, whereas Direct Imaging detects young, self-luminous giant planets.
  - **Differences in Variability and Shape**: The Transit radius distribution is positively skewed with a prominent concentration around Super-Earths/Sub-Neptunes ($1.5 - 3.5\ R_\oplus$) and a thin right-side tail. Radial Velocity exhibits broader spread (IQR) across planet radii due to mass-based detection filters.
+ To make the comparison readable, the four most frequent discovery methods were retained as separate categories and all remaining methods were combined into an "Other" category. This reduces the number of groups shown in the graph, but the "Other" category contains heterogeneous discovery methods and therefore should not be interpreted as a single detection technique.
 
 ```{r}
 exo_clean <- exo %>% filter(default_flag == 1)
@@ -98,13 +119,35 @@ ggplot(exo_clean %>% filter(!is.na(pl_rade)),
        fill = "Method") +
   theme_minimal() +
   theme(legend.position = "none")
+
+Q1 <- quantile(exo_clean$pl_rade, 0.25, na.rm = TRUE)
+Q3 <- quantile(exo_clean$pl_rade, 0.75, na.rm = TRUE)
+IQR_value <- Q3 - Q1
+
+outliers <- exo_clean %>%
+  filter(
+    pl_rade < Q1 - 1.5 * IQR_value |
+    pl_rade > Q3 + 1.5 * IQR_value
+  )
+
+outliers %>%
+  select(pl_name, pl_rade, discoverymethod)
 ```
 
 
 ## 5.2 Orbital Period (pl_orbper) across Stellar Multiplicity (sy_snum)
-- **Differences in Location**: Single-star host systems (sy_snum = 1) show a median orbital period close to $10 - 20\text{ days}$, heavily influenced by close-in transit survey bias. Binary and hierarchical triple systems (sy_snum >= 2) show slightly longer median orbital periods, as close-in planetary orbits in tight binary systems are dynamically unstable.
-- **Differences in Variability and Shape**: Single-star systems exhibit a broader overall distribution spanning orders of magnitude ($0.5\text{ days}$ to $>10,000\text{ days}$). Multi-star systems show a narrower, right-shifted density profile due to truncation of stable orbital resonances caused by secondary stellar gravitational perturbations.
-# ----------------------------------------------------------------------
+The distribution of orbital period was compared across planetary systems with different numbers of stars. The sy_snum variable was grouped into three categories: Single Star (sy_snum = 1), Binary Star System (sy_snum = 2), and Multi-Star (3+) (sy_snum ≥ 3). Only observations with available orbital-period values were included in this comparison.
+
+### Differences in Location
+
+The median orbital period is useful for comparing the typical planet in each group because orbital periods have a strongly right-skewed distribution. The group medians show whether planets in single-star, binary-star, and multi-star systems tend to have different typical orbital periods. The means are also reported, but they can be influenced by planets with very long orbital periods. Therefore, the median provides a more representative measure of the center of the distributions.
+
+### Differences in Variability and Shape
+
+The groups also differ in their variability and distributional shape. The standard deviation and IQR describe the spread of orbital periods within each stellar-system category. The density plot, shown on a logarithmic x-axis, makes it easier to compare orbital periods across their wide range of values. The distributions are right-skewed, with most planets having relatively shorter orbital periods and a smaller number having much longer periods. The boxplots also help identify potential outliers with unusually short or long orbital periods.
+
+Overall, the comparison shows that stellar multiplicity is associated with differences in the distribution of orbital periods. However, these results describe patterns and associations in the dataset and do not establish that the number of stars causes planets to have particular orbital periods.
+
 ```{r}
 exo_clean <- exo_clean %>%
   mutate(snum_cat = factor(case_when(
@@ -137,6 +180,19 @@ ggplot(exo_clean %>% filter(!is.na(pl_orbper) & !is.na(snum_cat)),
        fill = "Stellar System") +
   theme_minimal()
 
+ggplot(
+  exo_clean %>% filter(!is.na(pl_orbper), !is.na(snum_cat)),
+  aes(x = snum_cat, y = pl_orbper)
+) +
+  geom_boxplot() +
+  scale_y_log10() +
+  labs(
+    title = "Orbital Period by Stellar Multiplicity",
+    x = "Stellar System",
+    y = "Orbital Period (Days, Log Scale)"
+  ) +
+  theme_minimal()
+
 ```
 
 # 6: Relationships Between Numerical Variables
@@ -147,7 +203,7 @@ ggplot(exo_clean %>% filter(!is.na(pl_orbper) & !is.na(snum_cat)),
 ```{r}
 # Semi-Major Axis vs. Orbital Period
 
-# Filter out missing values
+# Filter out missing values, i.e complete-case analysis for this pair.
 pair1 <- exo_clean %>% 
   filter(!is.na(pl_orbsmax) & !is.na(pl_orbper))
 
@@ -170,7 +226,7 @@ ggplot(pair1, aes(x = pl_orbsmax, y = pl_orbper)) +
 ```
 
 ## 6.2 Planet Mass (pl_bmasse) vs. Planet Radius (pl_rade)
-- **Direction and Strength**: There is a positive relationship between planet mass and planet radius. In general, heavier planets tend to be larger in size. The overall correlation is positive, showing that mass and size grow together for small-to-medium planets.
+- **Direction and Strength**: There is a positive relationship between planet mass and planet radius. There is a positive association between planet mass and radius: planets with larger masses tend, on average, to have larger radii.
 - **Form and Outliers**: On log-log scales, the scatterplot exhibits an upward trend for smaller terrestrial planets and super-Earths. However, for very high-mass gas giants, the curve flattens out—meaning heavy gas planets get denser rather than larger because gravity compresses the gas. Outliers primarily occur among extremely large, low-mass "puffy" gas planets.
 ```{r}
 # Filter out missing values
@@ -194,4 +250,3 @@ ggplot(pair2, aes(x = pl_bmasse, y = pl_rade)) +
   ) +
   theme_minimal()
 ```
-

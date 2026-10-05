@@ -513,11 +513,6 @@ group_summary <- data.frame(
     transit_iqr,
     rv_iqr,
     imaging_iqr
-  ),
-  Skewness = c(
-    transit_skew,
-    rv_skew,
-    imaging_skew
   )
 )
 

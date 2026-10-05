@@ -249,6 +249,42 @@ ggplot(pair2, aes(x = pl_bmasse, y = pl_rade)) +
 ```
 
 
+## 6.3 Planet Mass vs. Planet Radius by Discovery Method
+
+To investigate whether the discovery method changes the relationship between planet mass and radius, the relationship from Section 6.2 was compared across the main discovery-method groups.
+
+The scatterplot shows a positive relationship between mass and radius across the discovery methods. However, the groups are distributed differently across the plot, with some methods concentrated in particular ranges of mass and radius. The fitted lines allow the overall relationship to be compared between the groups.
+
+Overall, the positive relationship between mass and radius remains visible across the discovery methods, but the distribution and spread of the observations differ between groups. This suggests that discovery method is associated with differences in the observed mass-radius relationship, although this analysis does not establish a causal effect.
+
+```{r}
+## 6.3 Planet Mass vs. Planet Radius by Discovery Method
+
+pair3 <- exo_clean %>%
+  filter(
+    !is.na(pl_bmasse),
+    !is.na(pl_rade),
+    !is.na(disc_method_cat)
+  )
+
+ggplot(pair3,
+       aes(x = pl_bmasse,
+           y = pl_rade,
+           color = disc_method_cat)) +
+  geom_point(alpha = 0.5) +
+  scale_x_log10() +
+  scale_y_log10() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(
+    title = "Planet Mass vs. Radius by Discovery Method",
+    x = "Planet Mass (Earth Mass, Log Scale)",
+    y = "Planet Radius (Earth Radii, Log Scale)",
+    color = "Discovery Method"
+  ) +
+  theme_minimal()
+```
+
+
 
 
 
@@ -567,4 +603,4 @@ Overall, the differences are substantial rather than minor.
 
 The results show an association between discovery method and equilibrium temperature, but they do not show that discovery method causes the differences.
 
-```
+

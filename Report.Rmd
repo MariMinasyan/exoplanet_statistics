@@ -249,128 +249,325 @@ ggplot(pair2, aes(x = pl_bmasse, y = pl_rade)) +
 ```
 
 
+
+
+
 # 7. Distributional Analysis and QQ Plots
 
-We study the equilibrium temperature of planets (`pl_eqt`, in Kelvin). It is a continuous numerical variable, so the Normal distribution is a natural distribution to compare it with. We are not saying that the variable is Normal, we only check if Normal is a reasonable description.
+We study **planet equilibrium temperature (`pl_eqt`)**, measured in Kelvin.
 
-## 7.1 QQ Plots
+Our questions are:
 
-```{r qq-overall}
+1. Can equilibrium temperature be reasonably described by a Normal distribution?
+2. Does its distribution change by discovery method?
+
+## 7.1 Overall Distribution
+
+First, we remove missing values.
+
+```{r point7-data}
 eqt <- exo_clean$pl_eqt[!is.na(exo_clean$pl_eqt)]
+
 length(eqt)
-
-qqnorm(eqt,
-       main = "Normal QQ Plot of Equilibrium Temperature",
-       xlab = "Theoretical Normal Quantiles",
-       ylab = "Observed Quantiles")
-qqline(eqt)
 ```
 
-What we see:
+We calculate the main descriptive statistics.
 
-- The points follow the line only in the middle part.
-- Away from the middle they leave the line and make a curve.
-- The curve is smooth and not random, so the deviation is systematic (it is not just because of one or two points).
-- The biggest deviation is in the upper tail: the real high temperatures are much higher than what a Normal distribution would give.
-- The points at the top right (close to 4000 K) are far above the line, so they are potential unusual observations. We cannot say they are errors, because a QQ plot alone cannot tell us that.
-- This curved shape is typical for a right-skewed distribution.
+```{r point7-statistics}
+eqt_mean <- mean(eqt)
+eqt_median <- median(eqt)
+eqt_min <- min(eqt)
+eqt_max <- max(eqt)
+eqt_range <- eqt_max - eqt_min
+eqt_q1 <- quantile(eqt, 0.25)
+eqt_q3 <- quantile(eqt, 0.75)
+eqt_iqr <- IQR(eqt)
+eqt_sd <- sd(eqt)
 
-**Conclusion:** `pl_eqt` is not reasonably Normal.
+eqt_skewness <- mean((eqt - eqt_mean)^3) /
+  (mean((eqt - eqt_mean)^2))^1.5
 
-## 7.2 Does the distribution change by discovery method?
-
-We make one vector of temperatures for each method (without missing values) and check the sample sizes.
-
-```{r groups}
-transit <- exo_clean$pl_eqt[exo_clean$discoverymethod == "Transit" &
-                              !is.na(exo_clean$pl_eqt)]
-
-rv <- exo_clean$pl_eqt[exo_clean$discoverymethod == "Radial Velocity" &
-                         !is.na(exo_clean$pl_eqt)]
-
-imaging <- exo_clean$pl_eqt[exo_clean$discoverymethod == "Imaging" &
-                              !is.na(exo_clean$pl_eqt)]
-
-length(transit)
-length(rv)
-length(imaging)
+cat("Number of observations:", length(eqt), "\n")
+cat("Mean:", round(eqt_mean, 2), "K\n")
+cat("Median:", round(eqt_median, 2), "K\n")
+cat("Minimum:", eqt_min, "K\n")
+cat("Maximum:", eqt_max, "K\n")
+cat("Range:", round(eqt_range, 2), "K\n")
+cat("Q1:", round(eqt_q1, 2), "K\n")
+cat("Q3:", round(eqt_q3, 2), "K\n")
+cat("IQR:", round(eqt_iqr, 2), "K\n")
+cat("Standard deviation:", round(eqt_sd, 2), "K\n")
+cat("Skewness:", round(eqt_skewness, 2), "\n")
 ```
 
-Transit has over 17000 planets but Imaging has only 101, so we need to be more careful with the Imaging results.
+The mean is higher than the median and the skewness is positive, suggesting a right-skewed distribution.
 
-```{r boxplot-groups}
-boxplot(transit, rv, imaging,
-        names = c("Transit", "Radial Velocity", "Imaging"),
-        main = "Equilibrium Temperature by Discovery Method",
-        xlab = "Discovery Method",
-        ylab = "Equilibrium Temperature (K)")
+### Histogram
+
+```{r point7-histogram, fig.width=9, fig.height=5}
+hist(
+  eqt,
+  breaks = 40,
+  col = "#5B8FF9",
+  border = "white",
+  main = "Distribution of Planet Equilibrium Temperature",
+  xlab = "Equilibrium Temperature (K)",
+  ylab = "Number of Planets"
+)
+
+abline(
+  v = eqt_mean,
+  col = "#E74C3C",
+  lwd = 3,
+  lty = 2
+)
+
+abline(
+  v = eqt_median,
+  col = "#2ECC71",
+  lwd = 3,
+  lty = 2
+)
+
+legend(
+  "topright",
+  legend = c(
+    paste("Mean =", round(eqt_mean, 1), "K"),
+    paste("Median =", round(eqt_median, 1), "K")
+  ),
+  col = c("#E74C3C", "#2ECC71"),
+  lty = 2,
+  lwd = 3,
+  bty = "n"
+)
 ```
 
-The Imaging box is higher and much bigger than the other two. Transit has a lot of dots (potential outliers) on the top, Radial Velocity has only a few and Imaging has none.
+The histogram has a long upper tail, so the distribution is strongly right-skewed.
 
-Numbers for each group:
+## 7.2 Normal Distribution and QQ Plot
 
-```{r summaries-groups}
-# Transit
-summary(transit)
-sd(transit)
-IQR(transit)
-mean((transit - mean(transit))^3) / (mean((transit - mean(transit))^2))^1.5   # skewness
+We use the Normal distribution as a theoretical reference to see whether it is a reasonable description of the data.
 
-# Radial Velocity
-summary(rv)
-sd(rv)
-IQR(rv)
-mean((rv - mean(rv))^3) / (mean((rv - mean(rv))^2))^1.5   # skewness
+```{r point7-overall-qq, fig.width=8, fig.height=6}
+qqnorm(
+  eqt,
+  main = "Normal QQ Plot of Planet Equilibrium Temperature",
+  xlab = "Theoretical Normal Quantiles",
+  ylab = "Observed Quantiles",
+  pch = 16,
+  col = "#5B8FF9"
+)
 
-# Imaging
-summary(imaging)
-sd(imaging)
-IQR(imaging)
-mean((imaging - mean(imaging))^3) / (mean((imaging - mean(imaging))^2))^1.5   # skewness
+qqline(
+  eqt,
+  col = "#E74C3C",
+  lwd = 3
+)
 ```
 
+The points are closer to the line in the middle but deviate systematically in the tails, especially the upper tail.
 
-QQ plot for each group:
+Therefore, equilibrium temperature is **not reasonably described by a Normal distribution**.
 
-```{r qq-groups, fig.width=10, fig.height=4.5}
+The extreme upper observations are potentially unusual, but we do not automatically consider them errors.
+
+## 7.3 Distribution by Discovery Method
+
+We compare:
+
+- Transit
+- Radial Velocity
+- Imaging
+
+```{r point7-groups}
+transit <- exo_clean$pl_eqt[
+  exo_clean$discoverymethod == "Transit" &
+    !is.na(exo_clean$pl_eqt)
+]
+
+rv <- exo_clean$pl_eqt[
+  exo_clean$discoverymethod == "Radial Velocity" &
+    !is.na(exo_clean$pl_eqt)
+]
+
+imaging <- exo_clean$pl_eqt[
+  exo_clean$discoverymethod == "Imaging" &
+    !is.na(exo_clean$pl_eqt)
+]
+
+cat("Transit:", length(transit), "\n")
+cat("Radial Velocity:", length(rv), "\n")
+cat("Imaging:", length(imaging), "\n")
+```
+
+Transit has more than 17,000 observations, while Imaging has about 101, so the Imaging results should be interpreted more carefully.
+
+### Boxplot
+
+```{r point7-boxplot, fig.width=9, fig.height=6}
+boxplot(
+  transit,
+  rv,
+  imaging,
+  names = c("Transit", "Radial Velocity", "Imaging"),
+  col = c("#5B8FF9", "#9B59B6", "#2ECC71"),
+  border = "black",
+  main = "Equilibrium Temperature by Discovery Method",
+  xlab = "Discovery Method",
+  ylab = "Equilibrium Temperature (K)",
+  las = 1
+)
+```
+
+Imaging has the highest center and the largest spread.
+
+Transit and Radial Velocity have lower centers and more right-skewed distributions.
+
+### Numerical Summary
+
+```{r point7-group-statistics}
+transit_mean <- mean(transit)
+transit_median <- median(transit)
+transit_sd <- sd(transit)
+transit_iqr <- IQR(transit)
+
+transit_skew <- mean((transit - transit_mean)^3) /
+  (mean((transit - transit_mean)^2))^1.5
+
+rv_mean <- mean(rv)
+rv_median <- median(rv)
+rv_sd <- sd(rv)
+rv_iqr <- IQR(rv)
+
+rv_skew <- mean((rv - rv_mean)^3) /
+  (mean((rv - rv_mean)^2))^1.5
+
+imaging_mean <- mean(imaging)
+imaging_median <- median(imaging)
+imaging_sd <- sd(imaging)
+imaging_iqr <- IQR(imaging)
+
+imaging_skew <- mean((imaging - imaging_mean)^3) /
+  (mean((imaging - imaging_mean)^2))^1.5
+
+group_summary <- data.frame(
+  Method = c(
+    "Transit",
+    "Radial Velocity",
+    "Imaging"
+  ),
+  Count = c(
+    length(transit),
+    length(rv),
+    length(imaging)
+  ),
+  Mean = c(
+    transit_mean,
+    rv_mean,
+    imaging_mean
+  ),
+  Median = c(
+    transit_median,
+    rv_median,
+    imaging_median
+  ),
+  SD = c(
+    transit_sd,
+    rv_sd,
+    imaging_sd
+  ),
+  IQR = c(
+    transit_iqr,
+    rv_iqr,
+    imaging_iqr
+  ),
+  Skewness = c(
+    transit_skew,
+    rv_skew,
+    imaging_skew
+  )
+)
+
+knitr::kable(
+  group_summary,
+  digits = 2,
+  caption = "Equilibrium Temperature by Discovery Method"
+)
+```
+
+Imaging has the highest median and largest IQR.
+
+Transit and Radial Velocity have positive skewness, while Imaging has skewness close to zero.
+
+## 7.4 QQ Plots by Discovery Method
+
+```{r point7-group-qq, fig.width=12, fig.height=5}
 par(mfrow = c(1, 3))
 
-qqnorm(transit, main = "Transit")
-qqline(transit)
+qqnorm(
+  transit,
+  main = "Transit",
+  xlab = "Theoretical Normal Quantiles",
+  ylab = "Observed Quantiles",
+  pch = 16,
+  col = "#5B8FF9"
+)
 
-qqnorm(rv, main = "Radial Velocity")
-qqline(rv)
+qqline(
+  transit,
+  col = "#E74C3C",
+  lwd = 2
+)
 
-qqnorm(imaging, main = "Imaging")
-qqline(imaging)
+qqnorm(
+  rv,
+  main = "Radial Velocity",
+  xlab = "Theoretical Normal Quantiles",
+  ylab = "Observed Quantiles",
+  pch = 16,
+  col = "#9B59B6"
+)
+
+qqline(
+  rv,
+  col = "#E74C3C",
+  lwd = 2
+)
+
+qqnorm(
+  imaging,
+  main = "Imaging",
+  xlab = "Theoretical Normal Quantiles",
+  ylab = "Observed Quantiles",
+  pch = 16,
+  col = "#2ECC71"
+)
+
+qqline(
+  imaging,
+  col = "#E74C3C",
+  lwd = 2
+)
 
 par(mfrow = c(1, 1))
 ```
 
-What we see:
+Transit and Radial Velocity show stronger curvature and right-skewness.
 
-- Transit and Radial Velocity curve upward away from the line, so they are right-skewed (not Normal).
-- Imaging points are much closer to the line in the middle, so it is more symmetric. It has small deviations at the ends, but the sample is small (101), so we should not trust this too much.
+Imaging is more symmetric and closer to a linear pattern in the middle, but its sample size is much smaller.
 
-### Answers to the questions of 7.2
+## 7.5 Final Conclusion
 
-**1. Can the distributions be assumed to be the same?**
-No, they are clearly not the same.
+The three discovery methods have clearly different equilibrium-temperature distributions.
 
-**2. How do they differ?**
+- **Location:** Imaging has the highest median.
+- **Spread:** Imaging has the largest IQR.
+- **Skewness:** Transit and Radial Velocity are right-skewed.
+- **Tails:** Transit has a particularly long upper tail.
+- **Shape:** Imaging is more symmetric.
 
-- **Location:** Imaging has the highest median (1500 K), then Transit (800 K), and Radial Velocity is the lowest (524 K). The means have the same order as the medians, so it is not because of a few extreme values.
-- **Spread:** Imaging IQR is 1025 K, almost double of Transit (532 K) and Radial Velocity (517 K). Imaging also has the biggest standard deviation (683.9 K).
-- **Skewness and shape:** Transit (1.23) and Radial Velocity (1.00) are right-skewed. Imaging (-0.02) is approximately symmetric.
-- **Tails:** Transit has a very long upper tail with many potential outliers. Radial Velocity has few and Imaging has none.
+Overall, the differences are substantial rather than minor.
 
-**3. Are the differences big or small?**
-Big. They differ in location, spread and shape at the same time.
-
-**4. Is some category different from the others?**
-Yes, Imaging: higher center, much bigger spread and a symmetric shape instead of right-skewed. Transit and Radial Velocity are more similar to each other.
-
-This is only descriptive analysis. We see an association between discovery method and temperature, we do not say the method causes the temperature differences. Also Imaging has a small sample.
+The results show an association between discovery method and equilibrium temperature, but they do not show that discovery method causes the differences.
 
 ```

@@ -431,24 +431,21 @@ transit_median <- median(transit)
 transit_sd <- sd(transit)
 transit_iqr <- IQR(transit)
 
-transit_skew <- mean((transit - transit_mean)^3) /
-  (mean((transit - transit_mean)^2))^1.5
+
 
 rv_mean <- mean(rv)
 rv_median <- median(rv)
 rv_sd <- sd(rv)
 rv_iqr <- IQR(rv)
 
-rv_skew <- mean((rv - rv_mean)^3) /
-  (mean((rv - rv_mean)^2))^1.5
+
 
 imaging_mean <- mean(imaging)
 imaging_median <- median(imaging)
 imaging_sd <- sd(imaging)
 imaging_iqr <- IQR(imaging)
 
-imaging_skew <- mean((imaging - imaging_mean)^3) /
-  (mean((imaging - imaging_mean)^2))^1.5
+
 
 group_summary <- data.frame(
   Method = c(
@@ -554,7 +551,7 @@ par(mfrow = c(1, 1))
 
 Transit and Radial Velocity show stronger curvature and right-skewness.
 
-Imaging is more symmetric and closer to a linear pattern in the middle, but its sample size is much smaller.
+Imaging is appears more symmetric and closer to a linear pattern in the middle, but its sample size is much smaller.
 
 ## 7.5 Final Conclusion
 

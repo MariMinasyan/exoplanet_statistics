@@ -481,7 +481,14 @@ imaging_median <- median(imaging)
 imaging_sd <- sd(imaging)
 imaging_iqr <- IQR(imaging)
 
+transit_skew <- mean((transit - mean(transit))^3) /
+  (mean((transit - mean(transit))^2))^1.5
 
+rv_skew <- mean((rv - mean(rv))^3) /
+  (mean((rv - mean(rv))^2))^1.5
+
+imaging_skew <- mean((imaging - mean(imaging))^3) /
+  (mean((imaging - mean(imaging))^2))^1.5
 
 group_summary <- data.frame(
   Method = c(
@@ -513,6 +520,11 @@ group_summary <- data.frame(
     transit_iqr,
     rv_iqr,
     imaging_iqr
+  ),
+  Skewness = c(
+    transit_skew,
+    rv_skew,
+    imaging_skew
   )
 )
 

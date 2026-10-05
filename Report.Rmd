@@ -73,8 +73,8 @@ sum(exo$default_flag == 1, na.rm = TRUE)
 # 5. Numerical Variables by Categories
 
 ## 5.1 Planet Radius (pl_rade) by Discovery Method (discoverymethod)
- - **Differences in Location**: **Transit** planets have a lower median radius than the other major discovery-method groups. Transit surveys excel at finding Earth-to-Neptune sized candidates blocking faint stellar light, whereas Direct Imaging detects young, self-luminous giant planets.
- - **Differences in Variability and Shape**: The Transit radius distribution is positively skewed with a prominent concentration around Super-Earths/Sub-Neptunes ($1.5 - 3.5\ R_\oplus$) and a thin right-side tail. Radial Velocity exhibits broader spread (IQR) across planet radii due to mass-based detection filters.
+ - **Differences in Location**: The median planet radius differs across the major discovery-method groups. The Transit group has a lower median radius than some of the other discovery methods. The median is useful for this comparison because planet radius has a skewed distribution and can contain extreme values.
+ - **Differences in Variability and Shape**:The distributions also differ in their spread and shape. The Transit group has many observations concentrated at smaller planet radii, with a longer tail toward larger radii. The boxplot also shows differences in the IQR and the presence of potential outliers across discovery methods.
  To make the comparison readable, the four most frequent discovery methods were retained as separate categories and all remaining methods were combined into an "Other" category. This reduces the number of groups shown in the graph, but the "Other" category contains heterogeneous discovery methods and therefore should not be interpreted as a single detection technique.
 
 ```{r}
@@ -137,17 +137,14 @@ outliers %>%
 
 ## 5.2 Orbital Period (pl_orbper) across Stellar Multiplicity (sy_snum)
 The distribution of orbital period was compared across planetary systems with different numbers of stars. The sy_snum variable was grouped into three categories: Single Star (sy_snum = 1), Binary Star System (sy_snum = 2), and Multi-Star (3+) (sy_snum ≥ 3). Only observations with available orbital-period values were included in this comparison.
-
 ### Differences in Location
-
-The median orbital period is useful for comparing the typical planet in each group because orbital periods have a strongly right-skewed distribution. The group medians show whether planets in single-star, binary-star, and multi-star systems tend to have different typical orbital periods. The means are also reported, but they can be influenced by planets with very long orbital periods. Therefore, the median provides a more representative measure of the center of the distributions.
-
+The median orbital period is 10.6 days for Single Star systems, 12.8 days for Binary Star Systems, and 13.7 days for Multi-Star systems. Therefore, the typical orbital period is somewhat longer in systems with two or more stars.
+The means are much larger than the medians in all three groups. For example, the mean for Binary Star Systems is 16,857 days, compared with a median of only 12.8 days. This large difference suggests that a relatively small number of planets with very long orbital periods strongly affect the mean. Therefore, the median is more useful than the mean for comparing the typical orbital period across these groups.
 ### Differences in Variability and Shape
+There are substantial differences in variability between the groups. The IQR is 30.8 days for Single Star systems, 213 days for Binary Star Systems, and 252 days for Multi-Star systems. This shows that the middle 50% of orbital periods are much more spread out in the Binary and Multi-Star groups.
+The standard deviations are also very large, especially for Binary Star Systems. The standard deviation is 147,179 days for Single Star systems, 278,352 days for Binary Star systems, and 12,515 days for Multi-Star systems. These large values indicate that extreme orbital-period observations have a strong effect on the standard deviation.
 
-The groups also differ in their variability and distributional shape. The standard deviation and IQR describe the spread of orbital periods within each stellar-system category. The density plot, shown on a logarithmic x-axis, makes it easier to compare orbital periods across their wide range of values. The distributions are right-skewed, with most planets having relatively shorter orbital periods and a smaller number having much longer periods. The boxplots also help identify potential outliers with unusually short or long orbital periods.
-
-Overall, the comparison shows that stellar multiplicity is associated with differences in the distribution of orbital periods. However, these results describe patterns and associations in the dataset and do not establish that the number of stars causes planets to have particular orbital periods.
-
+Overall, Most discovery-method groups have right-skewed distributions, as shown by the large differences between the means and medians. The boxplot and density plot on the logarithmic scale make differences in spread and the presence of extreme values easier to see. These results show an association between stellar multiplicity and the distribution of orbital periods, but they do not establish that the number of stars causes differences in orbital period.
 ```{r}
 exo_clean <- exo_clean %>%
   mutate(snum_cat = factor(case_when(
@@ -197,8 +194,8 @@ ggplot(
 
 # 6: Relationships Between Numerical Variables
 ## 6.1 Distance from Star (pl_orbsmax) vs. Orbital Period (pl_orbper)
-- **Direction and Strength**: There is a strong, positive relationship between a planet's distance from its star and its orbital period. As distance increases, orbital period increases. The calculated Pearson correlation coefficient is positive and indicates a strong association once plotted on a logarithmic scale.
-- **Form and Outliers**: The scatter plot shows a clear straight line when using logarithmic scales for both axes. This shows that the two variables follow a steady proportional pattern (Kepler's Third Law: planets further from their star take longer to complete an orbit). Outliers are minimal, located mostly at extreme distances over $100\text{ AU}$.
+- **Direction and Strength**: There is a strong positive relationship between a planet's semi-major axis and its orbital period. In general, planets with larger semi-major axes tend to have longer orbital periods. The Pearson correlation coefficient indicates a strong positive association between the two variables.
+- **Form and Outliers**: On the logarithmic scales, the scatterplot shows a clear positive and approximately linear pattern.This indicates that the relationship is well described by a power-law-type pattern on the log-log scale. A small number of observations appear far from the main concentration of points, particularly at very large semi-major axes.
 
 ```{r}
 # Semi-Major Axis vs. Orbital Period
@@ -226,8 +223,8 @@ ggplot(pair1, aes(x = pl_orbsmax, y = pl_orbper)) +
 ```
 
 ## 6.2 Planet Mass (pl_bmasse) vs. Planet Radius (pl_rade)
-- **Direction and Strength**: There is a positive relationship between planet mass and planet radius. There is a positive association between planet mass and radius: planets with larger masses tend, on average, to have larger radii.
-- **Form and Outliers**: On log-log scales, the scatterplot exhibits an upward trend for smaller terrestrial planets and super-Earths. However, for very high-mass gas giants, the curve flattens out—meaning heavy gas planets get denser rather than larger because gravity compresses the gas. Outliers primarily occur among extremely large, low-mass "puffy" gas planets.
+- **Direction and Strength**: There is a positive relationship between planet mass and planet radius. In general, planets with larger masses tend to have larger radii, although the points show considerable variation around the overall trend.
+- **Form and Outliers**: On the log-log scale, the scatterplot shows an overall upward trend, but the relationship is not perfectly linear. The spread of the observations changes across the range of mass and radius, and several observations appear separated from the main pattern. These observations can be considered potential outliers and should be investigated rather than automatically removed.
 ```{r}
 # Filter out missing values
 pair2 <- exo_clean %>% 
@@ -249,4 +246,131 @@ ggplot(pair2, aes(x = pl_bmasse, y = pl_rade)) +
     y = "Planet Radius (Earth Radii, Log Scale)"
   ) +
   theme_minimal()
+```
+
+
+# 7. Distributional Analysis and QQ Plots
+
+We study the equilibrium temperature of planets (`pl_eqt`, in Kelvin). It is a continuous numerical variable, so the Normal distribution is a natural distribution to compare it with. We are not saying that the variable is Normal, we only check if Normal is a reasonable description.
+
+## 7.1 QQ Plots
+
+```{r qq-overall}
+eqt <- exo_clean$pl_eqt[!is.na(exo_clean$pl_eqt)]
+length(eqt)
+
+qqnorm(eqt,
+       main = "Normal QQ Plot of Equilibrium Temperature",
+       xlab = "Theoretical Normal Quantiles",
+       ylab = "Observed Quantiles")
+qqline(eqt)
+```
+
+What we see:
+
+- The points follow the line only in the middle part.
+- Away from the middle they leave the line and make a curve.
+- The curve is smooth and not random, so the deviation is systematic (it is not just because of one or two points).
+- The biggest deviation is in the upper tail: the real high temperatures are much higher than what a Normal distribution would give.
+- The points at the top right (close to 4000 K) are far above the line, so they are potential unusual observations. We cannot say they are errors, because a QQ plot alone cannot tell us that.
+- This curved shape is typical for a right-skewed distribution.
+
+**Conclusion:** `pl_eqt` is not reasonably Normal.
+
+## 7.2 Does the distribution change by discovery method?
+
+We make one vector of temperatures for each method (without missing values) and check the sample sizes.
+
+```{r groups}
+transit <- exo_clean$pl_eqt[exo_clean$discoverymethod == "Transit" &
+                              !is.na(exo_clean$pl_eqt)]
+
+rv <- exo_clean$pl_eqt[exo_clean$discoverymethod == "Radial Velocity" &
+                         !is.na(exo_clean$pl_eqt)]
+
+imaging <- exo_clean$pl_eqt[exo_clean$discoverymethod == "Imaging" &
+                              !is.na(exo_clean$pl_eqt)]
+
+length(transit)
+length(rv)
+length(imaging)
+```
+
+Transit has over 17000 planets but Imaging has only 101, so we need to be more careful with the Imaging results.
+
+```{r boxplot-groups}
+boxplot(transit, rv, imaging,
+        names = c("Transit", "Radial Velocity", "Imaging"),
+        main = "Equilibrium Temperature by Discovery Method",
+        xlab = "Discovery Method",
+        ylab = "Equilibrium Temperature (K)")
+```
+
+The Imaging box is higher and much bigger than the other two. Transit has a lot of dots (potential outliers) on the top, Radial Velocity has only a few and Imaging has none.
+
+Numbers for each group:
+
+```{r summaries-groups}
+# Transit
+summary(transit)
+sd(transit)
+IQR(transit)
+mean((transit - mean(transit))^3) / (mean((transit - mean(transit))^2))^1.5   # skewness
+
+# Radial Velocity
+summary(rv)
+sd(rv)
+IQR(rv)
+mean((rv - mean(rv))^3) / (mean((rv - mean(rv))^2))^1.5   # skewness
+
+# Imaging
+summary(imaging)
+sd(imaging)
+IQR(imaging)
+mean((imaging - mean(imaging))^3) / (mean((imaging - mean(imaging))^2))^1.5   # skewness
+```
+
+
+QQ plot for each group:
+
+```{r qq-groups, fig.width=10, fig.height=4.5}
+par(mfrow = c(1, 3))
+
+qqnorm(transit, main = "Transit")
+qqline(transit)
+
+qqnorm(rv, main = "Radial Velocity")
+qqline(rv)
+
+qqnorm(imaging, main = "Imaging")
+qqline(imaging)
+
+par(mfrow = c(1, 1))
+```
+
+What we see:
+
+- Transit and Radial Velocity curve upward away from the line, so they are right-skewed (not Normal).
+- Imaging points are much closer to the line in the middle, so it is more symmetric. It has small deviations at the ends, but the sample is small (101), so we should not trust this too much.
+
+### Answers to the questions of 7.2
+
+**1. Can the distributions be assumed to be the same?**
+No, they are clearly not the same.
+
+**2. How do they differ?**
+
+- **Location:** Imaging has the highest median (1500 K), then Transit (800 K), and Radial Velocity is the lowest (524 K). The means have the same order as the medians, so it is not because of a few extreme values.
+- **Spread:** Imaging IQR is 1025 K, almost double of Transit (532 K) and Radial Velocity (517 K). Imaging also has the biggest standard deviation (683.9 K).
+- **Skewness and shape:** Transit (1.23) and Radial Velocity (1.00) are right-skewed. Imaging (-0.02) is approximately symmetric.
+- **Tails:** Transit has a very long upper tail with many potential outliers. Radial Velocity has few and Imaging has none.
+
+**3. Are the differences big or small?**
+Big. They differ in location, spread and shape at the same time.
+
+**4. Is some category different from the others?**
+Yes, Imaging: higher center, much bigger spread and a symmetric shape instead of right-skewed. Transit and Radial Velocity are more similar to each other.
+
+This is only descriptive analysis. We see an association between discovery method and temperature, we do not say the method causes the temperature differences. Also Imaging has a small sample.
+
 ```

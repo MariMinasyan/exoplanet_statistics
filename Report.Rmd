@@ -134,17 +134,15 @@ outliers %>%
   select(pl_name, pl_rade, discoverymethod)
 ```
 
-
 ## 5.2 Orbital Period (pl_orbper) across Stellar Multiplicity (sy_snum)
-The distribution of orbital period was compared across planetary systems with different numbers of stars. The sy_snum variable was grouped into three categories: Single Star (sy_snum = 1), Binary Star System (sy_snum = 2), and Multi-Star (3+) (sy_snum ≥ 3). Only observations with available orbital-period values were included in this comparison.
-- **Differences in Location**
-The median orbital period is 10.6 days for Single Star systems, 12.8 days for Binary Star Systems, and 13.7 days for Multi-Star systems. Therefore, the typical orbital period is somewhat longer in systems with two or more stars.
+ - The distribution of orbital period was compared across planetary systems with different numbers of stars. The sy_snum variable was grouped into three categories: Single Star (sy_snum = 1), Binary Star System (sy_snum = 2), and Multi-Star (3+) (sy_snum ≥ 3). Only observations with available orbital-period values were included in this comparison.
+ - **Differences in Location**: The median orbital period is 10.6 days for Single Star systems, 12.8 days for Binary Star Systems, and 13.7 days for Multi-Star systems. Therefore, the typical orbital period is somewhat longer in systems with two or more stars.
 The means are much larger than the medians in all three groups. For example, the mean for Binary Star Systems is 16,857 days, compared with a median of only 12.8 days. This large difference suggests that a relatively small number of planets with very long orbital periods strongly affect the mean. Therefore, the median is more useful than the mean for comparing the typical orbital period across these groups.
--** Differences in Variability and Shape**
+ - **Differences in Variability and Shape**:Differences in Variability and Shape**
 There are substantial differences in variability between the groups. The IQR is 30.8 days for Single Star systems, 213 days for Binary Star Systems, and 252 days for Multi-Star systems. This shows that the middle 50% of orbital periods are much more spread out in the Binary and Multi-Star groups.
 The standard deviations are also very large, especially for Binary Star Systems. The standard deviation is 147,179 days for Single Star systems, 278,352 days for Binary Star systems, and 12,515 days for Multi-Star systems. These large values indicate that extreme orbital-period observations have a strong effect on the standard deviation.
-
-Overall, Most discovery-method groups have right-skewed distributions, as shown by the large differences between the means and medians. The boxplot and density plot on the logarithmic scale make differences in spread and the presence of extreme values easier to see. These results show an association between stellar multiplicity and the distribution of orbital periods, but they do not establish that the number of stars causes differences in orbital period.
+ Overall, Most discovery-method groups have right-skewed distributions, as shown by the large differences between the means and medians. The boxplot and density plot on the logarithmic scale make differences in spread and the presence of extreme values easier to see. These results show an association between stellar multiplicity and the distribution of orbital periods, but they do not establish that the number of stars causes differences in orbital period.
+ 
 ```{r}
 exo_clean <- exo_clean %>%
   mutate(snum_cat = factor(case_when(

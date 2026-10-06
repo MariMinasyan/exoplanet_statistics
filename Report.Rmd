@@ -22,6 +22,8 @@ The dataset was imported into R from the NASA Exoplanet Archive Planetary System
 library(readr)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
+
 
 exo <- read_csv("ExoplanetsDataset.csv", comment = "#",  show_col_types = FALSE)
 
@@ -984,77 +986,12 @@ exo8 %>%
                caption = "Radial Velocity discoveries: median planet mass (Earth masses)")
 ```
 
-**Results and interpretation.** The size of discovered planets changed dramatically. Before 2010, the median radius was about 13.7 Earth radii and 93.2% of planets with a measured radius were giants (n = 73). From 2010 to 2014 the median fell to about 2.35 Earth radii, and in 2015-2019 to about 2.26, with 38-41% of planets in the small class and only 16-18% giants. In 2020 onward the median rose slightly to about 2.76 and the giant share rose to 26.8%, so the trend is not monotone. The spread also changed: the IQR was narrow before 2010 (12.3-15.6) but wider in 2020 onward (upper quartile about 7.2). The same pattern appears among Transit discoveries alone (giant share 94.7% → 17.6% → 15.9% → 26.5%), so the change cannot be explained only by a shift in discovery method. The median mass of Radial Velocity planets also fell steadily across the four periods (about 526 → 350 → 213 → 75 Earth masses), which shows the same effect for a second method.
+**Results and interpretation.** The size of discovered planets changed dramatically. Before 2010, the median radius was about 13.7 Earth radii and 93.2% of planets with a measured radius were giants (n = 73). From 2010 to 2014 the median fell to about 2.35 Earth radii, and in 2015-2019 to about 2.26, with 38-42% of planets in the small class and only 16-18.5% giants. In 2020 onward the median rose slightly to about 2.76 and the giant share rose to 26.8%, so the trend is not monotone. The spread also changed: the IQR interval was [12.3,15.6] before 2010  but in 2020 onward was [7.25,1.92], so the discovery of giants was mostly before . The same pattern appears among Transit discoveries alone (giant share 94.7% → 17.6% → 15.9% → 26.5%), so the change cannot be explained only by a shift in discovery method. The median mass of Radial Velocity planets also fell steadily across the four periods (about 526 → 350 → 213 → 75 Earth masses), which shows the same effect for a second method. Radial velocity detects a planet by the tiny wobble its gravity causes in the star. The size of the wobble depends on the planet's mass, so mass comes out of the measurement directly.
 
-**What this tells us:** early surveys could only detect large, massive planets, and as instruments and surveys improved (Kepler, TESS and better spectrographs), much smaller planets became detectable. **What it does not tell us:** that the *population* of planets changed. The archive describes planets that are *detectable*, not all planets, so this is mainly a detection-sensitivity effect. The pre-2010 group is also small (n = 73 with radius), so its summaries are less stable, and the small rise after 2020 may reflect specific surveys targeting giant planets.
+**What this tells us:** early surveys could only detect large, massive planets, and as instruments and surveys improved, much smaller planets became detectable. **What it does not tell us:** that the *population* of planets changed. The pre-2010 group is also small (n = 73 with radius), so its summaries are less stable, and the small rise after 2020 may reflect specific surveys targeting giant planets.
 
-### 8.2 Question 2: Where do giant planets orbit, and does the size–period relationship differ between size classes?
 
-**Variables:** planet radius (`pl_rade`), orbital period (`pl_orbper`), size class, discovery method.
-
-**Methods:** period bins with the share of size classes in each bin, a scatterplot with points separated by size class, and correlations computed overall and within each class.
-
-```{r s8-q2-data}
-q2 <- exo8 %>%
-  filter(!is.na(pl_rade), !is.na(pl_orbper), !is.na(size_class)) %>%
-  mutate(period_bin = cut(pl_orbper,
-                          breaks = c(0, 3, 10, 30, 100, 365, Inf),
-                          labels = c("<3", "3-10", "10-30", "30-100", "100-365", ">365")))
-nrow(q2)
-
-ct_q2 <- table(q2$period_bin, q2$size_class)
-addmargins(ct_q2)
-round(100 * prop.table(ct_q2, margin = 1), 1)
-
-# Where do the different classes sit?
-q2 %>%
-  group_by(size_class) %>%
-  summarise(n = n(),
-            Q1_period = quantile(pl_orbper, 0.25),
-            Median_period = median(pl_orbper),
-            Q3_period = quantile(pl_orbper, 0.75),
-            Pct_period_under_10d = 100 * mean(pl_orbper < 10)) %>%
-  knitr::kable(digits = 2, caption = "Orbital period (days) by planet size class")
-```
-
-```{r s8-q2-plots, fig.width=9, fig.height=5}
-# (a) Size-class mix inside each period bin
-ggplot(q2, aes(x = period_bin, fill = size_class)) +
-  geom_bar(position = "fill") +
-  scale_y_continuous(labels = percent) +
-  labs(title = "Size-Class Mix by Orbital Period",
-       x = "Orbital Period (days)", y = "Proportion of Planets", fill = "Size class") +
-  theme_minimal()
-
-# (b) Scatterplot: period vs radius, by size class
-ggplot(q2, aes(x = pl_orbper, y = pl_rade, color = size_class)) +
-  geom_point(alpha = 0.35) +
-  geom_smooth(method = "lm", se = FALSE) +
-  scale_x_log10() +
-  scale_y_log10() +
-  labs(title = "Planet Radius vs. Orbital Period by Size Class",
-       x = "Orbital Period (days, log scale)",
-       y = "Planet Radius (Earth radii, log scale)",
-       color = "Size class") +
-  theme_minimal()
-```
-
-```{r s8-q2-cor}
-# Correlation of log10 variables: overall and within each size class
-cat("Overall r =", round(cor(log10(q2$pl_orbper), log10(q2$pl_rade)), 2), "\n")
-q2 %>%
-  group_by(size_class) %>%
-  summarise(n = n(), r_log = cor(log10(pl_orbper), log10(pl_rade))) %>%
-  knitr::kable(digits = 2, caption = "Correlation of log10(period) and log10(radius) by size class")
-```
-
-**Results and interpretation.** The size mix depends strongly on the orbital period. Among planets with periods under 3 days, 30.2% are giants and 56.1% are small. Giants make up 26.8% of the 3-10 day bin, but only 7.6% of the 10-30 day bin. Mid-size planets dominate the 10-100 day range (61.6% and 71.5%). Giants are clearly concentrated at short periods: about 76% of all giants have a period below 10 days, and their median period (4.2 days) is shorter than that of mid-size planets (13.7 days) and small planets (5.7 days). This is the "hot Jupiter" population. The share of giants rises again at long periods (30.2% for 100-365 days and 63.6% for more than 365 days), but those bins are small (the last bin has only 33 planets), so these proportions are unstable.
-
-The scatterplot shows that the relation between period and radius is not the same in the three classes. Overall, log-period and log-radius are almost uncorrelated (r = 0.04), but this hides opposite trends within the groups: r = +0.28 for small planets, r = +0.07 for mid-size planets, and r = -0.34 for giants. Small planets tend to be slightly larger at longer periods, while giants tend to be somewhat *smaller* at longer periods. The weak overall correlation is therefore a result of mixing groups with different behaviour.
-
-**What this tells us:** giant planets are over-represented at very short periods, and a single correlation coefficient for all planets would be misleading. **What it does not tell us:** how common hot Jupiters really are. Transit and Radial Velocity both favour large planets on short orbits, so their share in the archive is inflated. The size classes use arbitrary cut-offs (2 and 6 Earth radii), and the within-class correlations are weak to moderate, so they describe tendencies, not rules.
-
-### 8.3 Question 3: Does the relationship between equilibrium temperature and orbital distance depend on the temperature of the host star?
+### 8.2 Question 2: Does the relationship between equilibrium temperature and orbital distance depend on the temperature of the host star?
 
 **Variables:** equilibrium temperature (`pl_eqt`), semi-major axis (`pl_orbsmax`), and host star effective temperature (`st_teff`), split into three equal-sized groups (Cool, Medium, Hot).
 
@@ -1069,6 +1006,7 @@ cuts <- quantile(q3$st_teff, probs = c(0, 1/3, 2/3, 1))
 q3 <- q3 %>%
   mutate(star_class = cut(st_teff, breaks = cuts, include.lowest = TRUE,
                           labels = c("Cool host", "Medium host", "Hot host")))
+# counting the rows of q3 which includes the data where all key attributes for our analysis are present
 nrow(q3)
 
 q3 %>%
@@ -1094,172 +1032,55 @@ ggplot(q3, aes(x = pl_orbsmax, y = pl_eqt, color = star_class)) +
 ```
 
 ```{r s8-q3-cor}
-cat("Overall r (log-log) =", round(cor(log10(q3$pl_orbsmax), log10(q3$pl_eqt)), 2), "\n")
+cat("Overall correlation (log-log) =", round(cor(log10(q3$pl_orbsmax), log10(q3$pl_eqt)), 2), "\n")
 
 q3 %>%
   group_by(star_class) %>%
   summarise(n = n(),
-            r_log = cor(log10(pl_orbsmax), log10(pl_eqt)),
-            slope = coef(lm(log10(pl_eqt) ~ log10(pl_orbsmax)))[2]) %>%
+            r_log = cor(log10(pl_orbsmax), log10(pl_eqt))) %>%
   knitr::kable(digits = 2, caption = "Log-log correlation and slope by host-star class")
 ```
 
-**Results and interpretation.** Equilibrium temperature tends to decrease with distance, but the strength depends on the host. Overall (n = 1,542) the log-log correlation is only r = -0.34, with a shallow slope (about -0.15). Within host groups, the relationship is strong for medium-temperature hosts (r = -0.84, slope about -0.40) and for hot hosts (r = -0.62, slope about -0.24), but almost absent for cool hosts (r = -0.11, slope about -0.04). The classes also differ in level: the median planet temperature is about 583 K around cool hosts, 952 K around medium hosts and 1,431 K around hot hosts, even though the median orbital distance is similar (0.05-0.07 AU) in all three. So, at a given distance, planets around hotter stars are hotter, and this is the main reason why the overall correlation is weak. Physical models predict a slope of about -0.5 in this log-log relation, and only the medium group is relatively close to this.
+**Results and interpretation.** Equilibrium temperature tends to decrease with distance, but the strength depends on the host. Overall (n = 1,542) the log-log correlation is only -0.34. Within host groups, the relationship is strong for medium-temperature hosts (r = -0.84) and for hot hosts (r = -0.62), but almost absent for cool hosts (r = -0.11). The classes also differ in level: the median planet temperature is about 583 K around cool hosts, 952 K around medium hosts and 1,431 K around hot hosts, even though the median orbital distance is similar (0.05-0.07 AU) in all three. So, at a given distance, planets around hotter stars are hotter, and this is the main reason why the overall correlation is weak. Physical models predict a slope of about -0.5 in this log-log relation, and only the medium group is relatively close to this.
 
 **What this tells us:** the host star must be taken into account when relating planet temperature to orbital distance. **What it does not tell us:** `pl_eqt` is not measured directly. It is *calculated* from the star's temperature and radius and the orbital distance, so part of this relationship holds by construction. The sample is also limited to planets that have all three variables (1,542 of 6,366), mostly transiting planets close to their stars, so the cool-host result may reflect a narrow range of distances rather than a true absence of relationship.
 
-### 8.4 Summary of the integrated analysis
+## 10. Conclusions
 
-All three investigations show the same general lesson: **the way planets are discovered shapes the data.** Detection sensitivity changed the size distribution over time (Q1), short-period giants are over-represented in the archive (Q2), and a relationship that looks weak when all planets are pooled becomes strong once the host star is taken into account (Q3). In two of the three cases, pooled summaries hid different behaviour in subgroups (opposite trends by size class, different slopes by host class). All findings are associations in a non-random sample and do not establish causation.
+In this project we analysed the NASA Exoplanet Archive, using one default parameter set per planet (6,366 planets). The main findings are below.
 
-## 9. Outliers and Unusual Observations
+**1. Most important characteristics of the dataset.**
+The data are very unbalanced. Transit discovers 74% of planets and Radial Velocity 19%, 91% of planets orbit single stars, and 94% were discovered after 2010. Many measurements are missing (for example, 81% of planet masses), so each analysis uses a different number of planets. The numerical variables (radius, mass, period, distance) are strongly right-skewed and cover several orders of magnitude, so the median and IQR describe them better than the mean and SD. On the log scale, radius and mass are bimodal, which suggests two populations: small planets and gas giants.
 
-Outliers were identified with the boxplot rule: an observation is flagged if it is below Q1 - 1.5·IQR or above Q3 + 1.5·IQR. For every variable we ask four questions: are they errors, are they legitimate, how much do they influence the analysis, and should they be kept?
+**2. Patterns and associations.**
+The discovery method is associated with the stellar multiplicity (about 6% of Transit planets are in binary systems, against 16.5% for Imaging). The method mix also changed over time: Radial Velocity dominated before 2010, while Transit dominates afterwards. The size of the discovered planets changed as well: the median radius fell from about 13.7 Earth radii before 2010 to about 2.3-2.8 later. Giant planets are concentrated at short periods (about 76% of giants orbit in under 10 days).
 
-### 9.1 Identification and influence on the descriptive statistics
+**3. Differences between groups.**
+Planet radius differs a lot between methods (median about 15 Earth radii for Imaging against 2.5 for Transit). Orbital period is longer and much more spread out in binary and multi-star systems (IQR about 213-252 days against 31 days for single stars). Equilibrium temperature also differs (median about 1,608 K for Imaging, 939 K for Transit and 420 K for Radial Velocity).
 
-```{r s9-fences}
-out_vars <- c(pl_rade = "Planet Radius (Earth radii)",
-              pl_bmasse = "Planet Mass (Earth masses)",
-              pl_orbper = "Orbital Period (days)",
-              pl_orbsmax = "Semi-Major Axis (AU)",
-              pl_eqt = "Equilibrium Temperature (K)")
+**4. Relationships between variables.**
+Orbital distance and orbital period have a very strong relationship on the log scale (r = 0.995), and mass and radius are strongly related on the log scale (r = 0.86). A planet's equilibrium temperature decreases with distance, but how strongly depends on the host star (r = -0.84 for medium-temperature hosts and r = -0.11 for cool hosts).
 
-outlier_row <- function(x, label) {
-  x <- x[!is.na(x)]
-  q <- quantile(x, c(0.25, 0.75))
-  lo <- q[1] - 1.5 * IQR(x)
-  hi <- q[2] + 1.5 * IQR(x)
-  keep <- x[x >= lo & x <= hi]
-  data.frame(Variable = label, n = length(x),
-             Lower_fence = lo, Upper_fence = hi,
-             N_outliers = sum(x < lo | x > hi),
-             Pct = 100 * mean(x < lo | x > hi),
-             Mean_all = mean(x), Mean_without = mean(keep),
-             Median_all = median(x), Median_without = median(keep),
-             SD_all = sd(x), SD_without = sd(keep))
-}
+**5. Distributions across categories.**
+Yes, the distributions clearly change across categories. The equilibrium-temperature distributions differ in location, spread and skewness between the three methods, and the differences are substantial. Imaging is the highest and the most symmetric (but has few planets), while Transit and Radial Velocity are right-skewed.
 
-out_table <- do.call(rbind, lapply(names(out_vars), function(v) {
-  outlier_row(exo_clean[[v]], out_vars[[v]])
-}))
-knitr::kable(out_table, digits = 2, row.names = FALSE,
-             caption = "Boxplot-rule outliers and their influence on mean, median and SD")
-```
+**6. Theoretical distributions.**
+Equilibrium temperature is not reasonably described by a Normal distribution. Its QQ plot deviates from the line, mainly in the upper tail, and the groups by method are even further from normal. The other variables are even more skewed, so none of them is close to Normal on the original scale.
 
-```{r s9-boxplots, fig.width=10, fig.height=4}
-library(tidyr)
+**7. Surprising findings.**
+Three results surprised us. First, the raw correlations can be very misleading: mass and radius have r = 0.36 on the raw scale but r = 0.86 on the log scale, because of extreme values. Second, pooled results can hide subgroups: radius and period are almost uncorrelated overall (r = 0.04), but they have opposite trends for small planets (+0.28) and giants (-0.34). Third, the share of giant planets went up again after 2020, so the change in planet size over time was not a simple decrease.
 
-exo_clean %>%
-  select(all_of(names(out_vars))) %>%
-  pivot_longer(everything(), names_to = "Variable", values_to = "Value") %>%
-  filter(!is.na(Value)) %>%
-  mutate(Variable = out_vars[Variable]) %>%
-  ggplot(aes(x = "", y = Value)) +
-  geom_boxplot(fill = "#5B8FF9", alpha = 0.6, outlier.color = "#E74C3C", outlier.alpha = 0.4) +
-  facet_wrap(~ Variable, scales = "free_y", nrow = 1) +
-  scale_y_log10() +
-  labs(title = "Boxplots with Flagged Outliers (log10 scale)", x = NULL, y = "Value (log scale)") +
-  theme_minimal() +
-  theme(strip.text = element_text(size = 7))
-```
+**8. Limitations.**
+- The archive contains planets that we are *able to detect*, not a random sample of all planets, so many patterns (size over time, hot Jupiters, method differences) are mostly detection bias.
+- There are a lot of missing values, so the analysis uses available cases only, and the planets with all variables may not represent the rest.
+- Some groups are small (Imaging, Other, and Radial Velocity planets with radius), so their summaries are unstable.
+- Some masses are only minimum masses (Msini), and the most extreme orbital values are uncertain.
+- Equilibrium temperature is calculated from other variables, not measured directly, and the size classes (2 and 6 Earth radii) are arbitrary.
+- We kept all outliers because they are real objects, but they strongly affect means and standard deviations.
 
-**Interpretation.** Many observations are flagged for four of the five variables: 906 for radius (19.1%), 422 for mass (13.4%), 1,041 for period (17.4%) and 606 for semi-major axis (15.4%). Almost all are above the upper fence and none are below it. These shares are far too large to be mistakes. They arise because the data mix several populations (small planets and gas giants, close-in and distant planets) and because the variables are strongly right-skewed. In contrast, equilibrium temperature has only 12 flagged planets (0.7%), and its summaries barely change when they are removed (mean 1,001 → 988 K, SD 540 → 517 K).
+Finally, this is an exploratory analysis. It describes patterns and associations, but it does not establish causation.
 
-The influence on the other variables is very large. For orbital period, removing the flagged values changes the mean from 4,337.6 to 14.3 days and the SD from 160,700 to 16.6 days. For semi-major axis, the mean changes from 20.1 to 0.27 AU. For radius, the mean falls from 4.50 to 2.37 Earth radii and the SD from 4.94 to 1.24, while for mass the mean falls from 766 to 272 Earth masses. The medians change much less (for example, radius 2.47 → 2.18 and period 10.8 → 7.8). This confirms that the median and IQR are the appropriate summaries in these variables, and that the mean and SD are mainly describing the extreme tail.
 
-### 9.2 Investigating the most extreme observations
 
-```{r s9-extremes}
-top_extremes <- function(var, n = 5) {
-  exo_clean %>%
-    filter(!is.na(.data[[var]])) %>%
-    arrange(desc(.data[[var]])) %>%
-    select(pl_name, discoverymethod, all_of(var), pl_controv_flag) %>%
-    head(n)
-}
 
-top_extremes("pl_rade")
-top_extremes("pl_bmasse")
-top_extremes("pl_orbper")
-top_extremes("pl_orbsmax")
-top_extremes("pl_eqt")
-```
-
-```{r s9-flags}
-# Are outliers uncertain? Check limit flags, controversial flags and mass type
-flag_check <- function(var, limvar) {
-  x <- exo_clean[[var]]
-  q <- quantile(x, c(0.25, 0.75), na.rm = TRUE)
-  f <- !is.na(x) & (x < q[1] - 1.5 * IQR(x, na.rm = TRUE) |
-                    x > q[2] + 1.5 * IQR(x, na.rm = TRUE))
-  data.frame(Variable = var,
-             N_outliers = sum(f),
-             With_limit_flag = sum(exo_clean[[limvar]][f] != 0, na.rm = TRUE),
-             Controversial = sum(exo_clean$pl_controv_flag[f] == 1, na.rm = TRUE))
-}
-rbind(flag_check("pl_rade", "pl_radelim"),
-      flag_check("pl_bmasse", "pl_bmasselim"),
-      flag_check("pl_orbper", "pl_orbperlim"),
-      flag_check("pl_orbsmax", "pl_orbsmaxlim"))
-
-# Are the mass outliers true masses, or only lower limits (Mass*sin(i))?
-mass_q <- quantile(exo_clean$pl_bmasse, c(0.25, 0.75), na.rm = TRUE)
-mass_out <- exo_clean %>%
-  filter(!is.na(pl_bmasse), pl_bmasse > mass_q[2] + 1.5 * IQR(exo_clean$pl_bmasse, na.rm = TRUE))
-table(mass_out$pl_bmassprov)
-
-# Planets heavier than 13 Jupiter masses (about 4,130 Earth masses)
-sum(exo_clean$pl_bmassj > 13, na.rm = TRUE)
-```
-
-**Are they errors?** We found no evidence that the extreme values are data-entry errors; they are consistent with real astrophysical objects. The most extreme radii are directly imaged, young, massive objects: V2376 Ori b (87.2 Earth radii, about 7.8 Jupiter radii), HD 100546 b (77.3) and GQ Lup b (33.6). Young giant planets are physically inflated, and objects of this size are at the boundary between planets and brown dwarfs. The most extreme masses are also imaged objects or very massive companions (for example 2MASS J22501512+2325342 b and Luhman 16 b at about 9,300-9,500 Earth masses, i.e. about 30 Jupiter masses), and 149 planets in the archive exceed 13 Jupiter masses, the usual planet/brown-dwarf boundary. The largest orbital periods and distances all come from the Imaging method: CFHTWIR-Oph 98 b has a period of 8.04 million days (about 22,000 years), and UCAC4 328-061594 b is at 19,000 AU. Such planets are real, but their orbits are only roughly constrained because only a tiny part of the orbit has been observed. For equilibrium temperature, the hottest planets (KELT-9 b at 3,921 K, TOI-2109 b, WASP-189 b) are well-known ultra-hot Jupiters, so they are legitimate.
-
-The flag checks give some further information. Very few outliers are lower or upper limits (only 6 of 1,041 period outliers, 3 of 606 semi-major-axis outliers and 17 of 422 mass outliers have a limit flag), and few are controversial (32 of the period outliers and 14 of the semi-major-axis outliers). One mass-related caution is that about 112 of the 422 mass outliers are only minimum masses (Msini), so their true masses may be higher.
-
-**Are they legitimate?** Yes. They are not mistakes but genuine members of the population (gas giants, directly imaged wide-orbit objects, and ultra-hot planets).
-
-### 9.3 Influence on the relationships
-
-```{r s9-sensitivity}
-# Orbital period vs semi-major axis: raw, log, rank, and trimmed versions
-p <- exo_clean %>% filter(!is.na(pl_orbsmax), !is.na(pl_orbper))
-p_trim <- p %>% filter(pl_orbper < 1e5, pl_orbsmax < 1000)
-
-data.frame(
-  Version = c("Pearson, raw scale (all)",
-              "Pearson, log10 scale (all)",
-              "Spearman rank (all)",
-              "Pearson, raw scale, extremes removed"),
-  n = c(nrow(p), nrow(p), nrow(p), nrow(p_trim)),
-  r = c(cor(p$pl_orbsmax, p$pl_orbper),
-        cor(log10(p$pl_orbsmax), log10(p$pl_orbper)),
-        cor(p$pl_orbsmax, p$pl_orbper, method = "spearman"),
-        cor(p_trim$pl_orbsmax, p_trim$pl_orbper))
-) %>% knitr::kable(digits = 3, caption = "Period vs. semi-major axis: sensitivity to extreme values")
-
-# Mass vs radius
-m <- exo_clean %>% filter(!is.na(pl_bmasse), !is.na(pl_rade))
-data.frame(
-  Version = c("Pearson, raw scale", "Pearson, log10 scale", "Spearman rank"),
-  n = nrow(m),
-  r = c(cor(m$pl_bmasse, m$pl_rade),
-        cor(log10(m$pl_bmasse), log10(m$pl_rade)),
-        cor(m$pl_bmasse, m$pl_rade, method = "spearman"))
-) %>% knitr::kable(digits = 3, caption = "Mass vs. radius: sensitivity to scale and outliers")
-```
-
-**Interpretation.** Outliers also have a strong influence on correlations. For period and semi-major axis, the raw Pearson correlation (0.69, n = 3,583) is pulled down by a few extremely distant, long-period objects. After a log transformation it is 0.995, the Spearman rank correlation is 0.989, and even on the raw scale with only the most extreme 7 planets removed it is 0.953 (n = 3,576). For mass and radius, the raw correlation of 0.36 (n = 1,557) is much weaker than the log-scale value of 0.86 and the rank correlation of 0.83. So the weak raw correlation reported in Section 6.2 was caused mainly by extreme values on a highly skewed scale, and the relationship is in fact strong. These results are why the earlier sections use log scales for the scatterplots, and why correlations in this project should be read together with the log or rank versions.
-
-### 9.4 Decision: retain, flag, and use robust methods
-
-| Variable | Outliers | Nature | Decision |
-|---|---|---|---|
-| Planet radius | 906 (19.1%) | Real gas giants plus a few young imaged objects | Retain; use median/IQR and log scale |
-| Planet mass | 422 (13.4%) | Real massive planets, many near the brown-dwarf limit; some are minimum masses | Retain; flag Msini values; use median/IQR |
-| Orbital period | 1,041 (17.4%) | Real; extreme values from directly imaged planets with poorly constrained orbits | Retain; use median/IQR and log scale |
-| Semi-major axis | 606 (15.4%) | Real wide-orbit imaged planets | Retain; use median/IQR and log scale |
-| Equilibrium temperature | 12 (0.7%) | Real ultra-hot Jupiters | Retain; negligible influence |
-
-No observation was removed. Removing the flagged planets would have deleted the whole gas-giant population and all directly imaged planets and would have changed the conclusions of Sections 4-8, so the outliers are a central feature of this dataset, not noise. The influence of the extreme values was handled in three other ways: (1) using the median, IQR and log scales for description, (2) reporting correlations on the log and rank scales next to the raw Pearson correlation, and (3) repeating key calculations with and without extreme values (the "without" columns above are for sensitivity checks only and are not used as the main results). The main caution is that the most extreme orbital values rest on very few observations and are uncertain, so they should not be interpreted precisely.
 

@@ -65,10 +65,301 @@ sum(exo$default_flag == 1, na.rm = TRUE)
 
 
 ## 2.3 Data Type Conversions and Explicit Explanations
-``` {r}
 
+Categorical variables were stored as character or integer types, so they were converted to factors. Two derived categorical variables were also created. No observations were removed in this step.
+
+- `discoverymethod` -> factor.
+- `disc_method_cat`: the four most frequent discovery methods are kept and all others are merged into "Other". This makes plots readable, but "Other" mixes several detection techniques and must not be read as one method.
+- `sy_snum` -> `snum_cat` with levels Single Star (1), Binary Star System (2), Multi-Star (3+). The 3+ levels are merged because they are rare.
+- `disc_year` -> `disc_era` (four time periods), so the discovery year can be treated as a categorical variable.
+- `ttv_flag`, `pl_controv_flag` (0/1) -> factors with labels "No"/"Yes".
+
+```{r conversions}
+exo_clean <- exo %>% filter(default_flag == 1)   # one parameter set per planet
+
+top_methods <- exo_clean %>%
+  count(discoverymethod) %>%
+  slice_max(n, n = 4, with_ties = FALSE) %>%
+  pull(discoverymethod)
+
+exo_clean <- exo_clean %>%
+  mutate(
+    discoverymethod = factor(discoverymethod),
+    disc_method_cat = factor(ifelse(discoverymethod %in% top_methods,
+                                    as.character(discoverymethod), "Other")),
+    snum_cat = factor(case_when(
+      sy_snum == 1 ~ "Single Star",
+      sy_snum == 2 ~ "Binary Star System",
+      sy_snum >= 3 ~ "Multi-Star (3+)"),
+      levels = c("Single Star", "Binary Star System", "Multi-Star (3+)")),
+    disc_era = cut(disc_year,
+                   breaks = c(-Inf, 2009, 2014, 2019, Inf),
+                   labels = c("Before 2010", "2010-2014", "2015-2019", "2020 onward")),
+    ttv_flag = factor(ttv_flag, levels = c(0, 1), labels = c("No", "Yes")),
+    pl_controv_flag = factor(pl_controv_flag, levels = c(0, 1), labels = c("No", "Yes"))
+  )
+
+nrow(exo_clean)   # number of distinct planets analysed
 ```
 
+# 3. Analysis of Categorical Variables
+
+The important categorical variables are the discovery method, the number of stars in the system, the discovery period, and the transit-timing-variation (TTV) flag. Each unit of observation is one planet (default parameter set).
+
+## 3.1 Discovery Method (`discoverymethod`)
+
+```{r cat-method-table}
+tab_method <- table(exo_clean$discoverymethod)
+method_df <- data.frame(
+  Method = names(tab_method),
+  Frequency = as.integer(tab_method),
+  Relative_Freq = round(as.numeric(prop.table(tab_method)), 4),
+  Percent = round(100 * as.numeric(prop.table(tab_method)), 2)
+) %>% arrange(desc(Frequency))
+
+knitr::kable(method_df, caption = "Frequency and relative frequency of discovery methods")
+```
+
+```{r cat-method-plot}
+ggplot(method_df, aes(x = reorder(Method, Frequency), y = Frequency)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = paste0(Percent, "%")), hjust = -0.1, size = 3) +
+  coord_flip() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "Number of Planets by Discovery Method",
+       x = "Discovery Method", y = "Number of Planets") +
+  theme_minimal()
+```
+
+**Interpretation.** The distribution is far from balanced. The Transit method is by far the most common and accounts for 73.96% of all planets, followed by Radial Velocity 18.85%. Several methods (for example Microlensing, Imaging, Transit Timing Variations, Eclipse Timing Variations, Orbital Brightness Modulation, Astrometry, Pulsar Timing, Pulsation Timing Variations, Disk Kinematics) are rare, each representing only a few planets or a small fraction of the data. Such sparse categories are potentially problematic: summaries based on a handful of planets are unstable, and tables or tests involving them are unreliable. For this reason, the four most frequent methods are kept as separate categories and all others are combined into "Other" in later sections.
+
+```{r cat-method-cat}
+tab_cat <- table(exo_clean$disc_method_cat)
+knitr::kable(
+  data.frame(Category = names(tab_cat),
+             Frequency = as.integer(tab_cat),
+             Percent = round(100 * as.numeric(prop.table(tab_cat)), 2)),
+  caption = "Discovery method after grouping (top 4 + Other)")
+```
+
+## 3.2 Number of Stars in the System (`snum_cat`)
+
+```{r cat-snum}
+tab_snum <- table(exo_clean$snum_cat, useNA = "ifany")
+snum_df <- data.frame(
+  Category = names(tab_snum),
+  Frequency = as.integer(tab_snum),
+  Percent = round(100 * as.numeric(prop.table(tab_snum)), 2)
+)
+knitr::kable(snum_df, caption = "Stellar multiplicity of the host systems")
+
+ggplot(snum_df, aes(x = Category, y = Frequency, fill = Category)) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = paste0(Percent, "%")), vjust = -0.3, size = 3.5) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  labs(title = "Planets by Stellar Multiplicity of the Host System",
+       x = "Stellar System", y = "Number of Planets") +
+  theme_minimal()
+```
+
+**Interpretation.** Most planets in the archive orbit single stars, 90.94%, while binary systems make up 7.89% and systems with three or more stars only 1.18%. The Multi-Star category is rare, so any comparison involving it is less reliable. Part of this imbalance may reflect observational selection: surveys often favour single stars because companion stars complicate detection.
+
+## 3.3 Discovery Period (`disc_era`)
+
+```{r cat-era}
+tab_era <- table(exo_clean$disc_era, useNA = "ifany")
+era_df <- data.frame(
+  Period = names(tab_era),
+  Frequency = as.integer(tab_era),
+  Percent = round(100 * as.numeric(prop.table(tab_era)), 2)
+)
+knitr::kable(era_df, caption = "Planets by discovery period")
+
+ggplot(era_df, aes(x = factor(Period, levels = levels(exo_clean$disc_era)), y = Frequency)) +
+  geom_col(fill = "darkorange") +
+  geom_text(aes(label = paste0(Percent, "%")), vjust = -0.3, size = 3.5) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) +
+  labs(title = "Number of Planets by Discovery Period",
+       x = "Discovery Period", y = "Number of Planets") +
+  theme_minimal()
+```
+
+**Interpretation.** The number of discoveries increased sharply over time: 93.64% of planets were found after 2010, compared with only 6.36% before 2010. The distribution is therefore strongly unbalanced toward recent years, which reflects the growth of large survey missions.
+
+## 3.4 Transit Timing Variations (`ttv_flag`)
+
+```{r cat-ttv}
+tab_ttv <- table(exo_clean$ttv_flag, useNA = "ifany")
+knitr::kable(
+  data.frame(TTV = names(tab_ttv),
+             Frequency = as.integer(tab_ttv),
+             Percent = round(100 * as.numeric(prop.table(tab_ttv)), 2)),
+  caption = "Planets with detected transit timing variations")
+```
+
+**Interpretation.** Only 7.76% planets show TTVs, so this is a heavily imbalanced binary variable. It is mainly useful as a supplementary variable.
+
+## 3.5 Interaction Between Categorical Variables
+
+### Pair 1: Discovery Method and Stellar Multiplicity
+
+*Question: does the distribution of stellar multiplicity differ between discovery methods?*
+
+```{r pair-method-snum}
+ct1 <- table(exo_clean$disc_method_cat, exo_clean$snum_cat)
+addmargins(ct1)
+
+# Row proportions: distribution of stellar multiplicity within each method
+round(100 * prop.table(ct1, margin = 1), 1)
+```
+
+```{r pair-method-snum-plot, fig.width=9, fig.height=5}
+df1 <- exo_clean %>% filter(!is.na(snum_cat))
+
+ggplot(df1, aes(x = disc_method_cat, fill = snum_cat)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Stellar Multiplicity within Each Discovery Method",
+       x = "Discovery Method", y = "Proportion of Planets", fill = "Stellar System") +
+  theme_minimal()
+
+ggplot(df1, aes(x = disc_method_cat, fill = snum_cat)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Counts by Discovery Method and Stellar Multiplicity",
+       x = "Discovery Method", y = "Number of Planets", fill = "Stellar System") +
+  theme_minimal()
+```
+
+**Interpretation.** In every method, single-star hosts form the largest group, but the proportions differ. For example, transit method has approximately 6% planets in binary systems, compared with approximately 18%% for Imaging. This indicates an association between the discovery method and the stellar multiplicity of the host. The share of Multi-Star systems is small everywhere. The counts plot should be used together with the proportion plot, since the stacked proportion bars hide the large differences in group sizes. This is an association only; it likely reflects how surveys select their target stars, not an effect of one variable on the other.
+
+### Pair 2: Discovery Method and Discovery Period
+
+*Question: has the mix of discovery methods changed over time?*
+
+```{r pair-method-era}
+ct2 <- table(exo_clean$disc_era, exo_clean$disc_method_cat)
+addmargins(ct2)
+
+# Row proportions: method mix within each period
+round(100 * prop.table(ct2, margin = 1), 1)
+```
+
+```{r pair-method-era-plot, fig.width=9, fig.height=5}
+df2 <- exo_clean %>% filter(!is.na(disc_era))
+
+ggplot(df2, aes(x = disc_era, fill = disc_method_cat)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Discovery Method Mix by Discovery Period",
+       x = "Discovery Period", y = "Proportion of Planets", fill = "Method") +
+  theme_minimal()
+
+ggplot(df2, aes(x = disc_era, fill = disc_method_cat)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Number of Planets by Period and Discovery Method",
+       x = "Discovery Period", y = "Number of Planets", fill = "Method") +
+  theme_minimal()
+```
+
+**Interpretation.** The method mix changes clearly over time. In the earliest period, Radical Velocity dominates, whereas in later periods Transit becomes the dominant method. The distribution of one variable therefore depends strongly on the category of the other, so the two variables are clearly associated. A plausible explanation is the launch of dedicated transit surveys, but the data alone only show the association, not the reason.
+
+# 4. Analysis of Numerical Variables
+
+The key numerical variables are planet radius (`pl_rade`, Earth radii), planet mass (`pl_bmasse`, Earth masses), orbital period (`pl_orbper`, days), semi-major axis (`pl_orbsmax`, AU), and equilibrium temperature (`pl_eqt`, K). Missing values are excluded separately for each variable (available-case analysis), so the sample size differs between variables.
+
+## 4.1 Descriptive Statistics
+
+```{r num-summary}
+num_vars <- c(
+  pl_rade    = "Planet Radius (Earth radii)",
+  pl_bmasse  = "Planet Mass (Earth masses)",
+  pl_orbper  = "Orbital Period (days)",
+  pl_orbsmax = "Semi-Major Axis (AU)",
+  pl_eqt     = "Equilibrium Temperature (K)"
+)
+
+skew <- function(x) mean((x - mean(x))^3) / (mean((x - mean(x))^2))^1.5
+
+num_summary <- function(x) {
+  x <- x[!is.na(x)]
+  q <- quantile(x, c(0.25, 0.75))
+  fence_lo <- q[1] - 1.5 * IQR(x)
+  fence_hi <- q[2] + 1.5 * IQR(x)
+  data.frame(
+    n = length(x), Mean = mean(x), Median = median(x),
+    Min = min(x), Max = max(x), Range = max(x) - min(x),
+    Q1 = q[[1]], Q3 = q[[2]], IQR = IQR(x), SD = sd(x),
+    Outliers = sum(x < fence_lo | x > fence_hi),
+    Outliers_pct = 100 * mean(x < fence_lo | x > fence_hi)
+  )
+}
+
+summary_table <- do.call(rbind, lapply(names(num_vars), function(v) {
+  cbind(Variable = num_vars[[v]], num_summary(exo_clean[[v]]))
+}))
+
+knitr::kable(summary_table, digits = 2, row.names = FALSE,
+             caption = "Descriptive statistics of the key numerical variables")
+```
+
+*Note: the coefficient of variation (CV = SD / mean) is meaningful here because all variables are strictly positive ratio-scale quantities. "Outliers" is the number of observations outside the boxplot fences Q1 - 1.5 IQR and Q3 + 1.5 IQR.*
+
+## 4.2 Distributions
+
+For each variable, the histogram on the original scale, the histogram on the log10 scale, and a boxplot on the log10 scale are shown. The log scale is used because the variables span several orders of magnitude.
+
+```{r num-plots, fig.width=12, fig.height=4}
+for (v in names(num_vars)) {
+  x <- exo_clean[[v]]
+  x <- x[!is.na(x)]
+  par(mfrow = c(1, 3))
+  hist(x, breaks = 40, col = "#5B8FF9", border = "white",
+       main = paste("Histogram:", num_vars[[v]]), xlab = num_vars[[v]])
+  abline(v = c(mean(x), median(x)), col = c("#E74C3C", "#2ECC71"), lwd = 2, lty = 2)
+  legend("topright", legend = c("Mean", "Median"),
+         col = c("#E74C3C", "#2ECC71"), lty = 2, lwd = 2, bty = "n")
+  hist(log10(x), breaks = 40, col = "#9B59B6", border = "white",
+       main = "Histogram (log10 scale)", xlab = paste("log10 of", num_vars[[v]]))
+  boxplot(x, log = "y", col = "#2ECC71", horizontal = FALSE,
+          main = "Boxplot (log scale)", ylab = num_vars[[v]])
+  par(mfrow = c(1, 1))
+}
+```
+
+
+## 4.3 Interpretation by Variable
+
+**Planet radius (`pl_rade`, n = 4,741).**
+*Center:* The median radius is 2.47 Earth radii, while the mean is 4.50. The mean is almost twice the median because a smaller group of very large planets pulls it up, so the median describes a typical planet better.
+*Variability:* The middle 50% of planets lie between 1.64 and 4.19 Earth radii (IQR = 2.55). The SD (4.94) show high relative variability, and the range (86.90) is dominated by a few extreme values.
+*Shape:* The distribution is right-skewed. On the log10 scale it is bimodal: a main peak at about 2-3 Earth radii and a second peak near 12 Earth radii, close to Jupiter's size. This suggests two populations (small planets and gas giants), so neither the mean nor the median describes the second group.
+*Outliers:* The boxplot rule flags 906 planets (19.1%), all above the upper fence of about 8.0 Earth radii; there are no lower outliers. This share is large because the gas-giant group lies above the fence. These planets are a real population and are retained. The maximum of 87.21 Earth radii (about 7.8 Jupiter radii) is far larger than any normal planet.
+
+**Planet mass (`pl_bmasse`, n = 3,158).**
+*Center:* The median is 171.2 Earth masses and the mean is 766.4, so the mean is about 4.5 times the median.
+*Variability:* The IQR is 683.9 (Q1 = 12.2, Q3 = 696.0), the SD is 1,495, the highest relative variability among the radius, mass and temperature variables. The values range from 0.02 to 9,534.9 Earth masses.
+*Shape:* The distribution is right-skewed. On the raw scale most planets fall in the first bar, and on the log10 scale the distribution is bimodal, with peaks at about 8 Earth masses and about 300 Earth masses (roughly one Jupiter mass). This agrees with the two populations seen in the radius.
+*Outliers:* There are 422 outliers (13.4%) above the fence of about 1,722 Earth masses, with none below. The largest, about 9,535 Earth masses (≈ 30 Jupiter masses), is near the planet/brown-dwarf border. They are genuine massive objects and are retained, but they strongly affect the mean and SD. Some masses are lower bounds, which should be considered
+
+**Orbital period (`pl_orbper`, n = 5,994).**
+*Center:* The median period is 10.78 days, while the mean is 4,337.6 days. The mean is about 400 times larger than the median, so it is meaningless as a typical value.
+*Variability:* The middle 50% lie between 4.31 and 38.55 days (IQR = 34.23). In contrast, the SD is 160,700 days, because the maximum is 8,040,000 days (about 22,000 years) and the minimum is only 0.09 days (about 2 hours).
+*Shape:* The raw histogram is a single bar, so it is not informative. On the log10 scale the distribution has one peak at about 5-10 days and a long right tail, so it remains right-skewed even after the transformation.
+*Outliers:* There are 1,041 outliers (17.4%) above the upper fence of about 90 days, and no lower outliers. A few values above 10⁵ days are extremely long and uncertain, probably from directly imaged planets on wide orbits. They are retained but flagged, and the median and IQR are used instead of the mean and SD.
+
+**Semi-major axis (`pl_orbsmax`, n = 3,926).**
+*Center:* The median is 0.12 AU and the mean is 20.11 AU, so a typical planet orbits much closer to its star than Mercury does (0.39 AU).
+*Variability:* The IQR is 0.78 AU (Q1 = 0.05, Q3 = 0.84), but the SD is 405 AU, driven by a maximum of 19,000 AU.
+*Shape:* The skewness is 35.73. The raw histogram is a single bar. On the log10 scale there is a large peak at about 0.05 AU and a smaller second bump at about 2 AU, and a long right tail.
+*Outliers:* There are 606 outliers (15.4%) above the fence of about 2.0 AU. These include wide-orbit planets up to 19,000 AU. They are retained, but very large values are likely uncertain. (The minimum prints as 0.00 only because of rounding.)
+
+**Equilibrium temperature (`pl_eqt`, n = 1,753).**
+*Center:* The median is 900 K and the mean is 1,001 K, so the two are fairly close and the typical planet is hot.
+*Variability:* Variability is moderate: IQR = 800 K (Q1 = 573, Q3 = 1,373), SD = 540 K much lower than for the other variables. The values range from 50 K to 3,921 K.
+*Shape:* The skewness (0.82) shows only a mild right skew, and the histogram has a single peak at about 400-600 K. Unlike the other variables, the log transformation is not helpful here, because the log10 histogram becomes left-skewed, so the original scale is appropriate.
+*Outliers:* The upper fence is about 2,573 K, so planets above that are flagged (the lower fence is below 0, so there are none on the low side). These are ultra-hot planets, are physically plausible, and are retained.
+
+**Overall.** Radius, mass, period and semi-major axis are right-skewed, with the mean far above the median, so the median and IQR are the appropriate summaries. They span several orders of magnitude and need log scales. Equilibrium temperature is much more symmetric and less variable. The outlier shares are high (13-19%). The sample sizes range from 1,753 to 5,994, so each summary describes the planets for which that property could be measured, not all planets.
 
 # 5. Numerical Variables by Categories
 

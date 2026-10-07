@@ -41,6 +41,7 @@ library(readr)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(scales)
 
 
 exo <- read_csv("ExoplanetsDataset.csv", comment = "#",  show_col_types = FALSE)
@@ -905,12 +906,7 @@ Overall, the differences are substantial rather than minor.
 
 The results show an association between discovery method and equilibrium temperature, but they do not show that discovery method causes the differences.
 
-
-
-
-#Updated
-
-## 8. Integrated Exploratory Data Analysis
+# 8. Integrated Exploratory Data Analysis
 
 The previous sections looked at one or two variables at a time. Here we combine several variables to answer three questions that came out of the earlier results:
 
@@ -918,11 +914,7 @@ The previous sections looked at one or two variables at a time. Here we combine 
 - the discovery-method mix changes strongly over time (Section 3.5);
 - orbital distance and period are strongly related (Section 6.1).
 
-```{r s8-setup}
-library(dplyr)
-library(ggplot2)
-library(scales)
-
+```{r}
 # Rebuild helper variables so that this section does not depend on earlier edits
 exo8 <- exo_clean %>%
   mutate(
@@ -1063,7 +1055,7 @@ q3 %>%
 
 **What this tells us:** the host star must be taken into account when relating planet temperature to orbital distance. **What it does not tell us:** `pl_eqt` is not measured directly. It is *calculated* from the star's temperature and radius and the orbital distance, so part of this relationship holds by construction. The sample is also limited to planets that have all three variables (1,542 of 6,366), mostly transiting planets close to their stars, so the cool-host result may reflect a narrow range of distances rather than a true absence of relationship.
 
-## 10. Conclusions
+# 10. Conclusions
 
 In this project we analysed the NASA Exoplanet Archive, using one default parameter set per planet (6,366 planets). The main findings are below.
 

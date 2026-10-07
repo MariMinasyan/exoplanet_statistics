@@ -390,7 +390,6 @@ for (v in names(num_vars)) {
  To make the comparison readable, the four most frequent discovery methods were retained as separate categories and all remaining methods were combined into an "Other" category. This reduces the number of groups shown in the graph, but the "Other" category contains heterogeneous discovery methods and therefore should not be interpreted as a single detection technique.
 
 ```{r}
-exo_clean <- exo %>% filter(default_flag == 1)
 
 # ----------------------------------------------------------------------
 #  Log Planet Radius (pl_rade) across Discovery Method (discoverymethod)

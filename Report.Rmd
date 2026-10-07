@@ -14,6 +14,24 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
                       fig.width = 8, fig.height = 5)
 ```
 
+# 1. Dataset Description
+
+**Source.** NASA Exoplanet Archive, *Planetary Systems* (PS) table ([link](https://exoplanetarchive.ipac.caltech.edu/cgi-bin/TblView/nph-tblView?app=ExoTbls&config=PS); Akeson et al. 2013). The archive collects published parameters of confirmed exoplanets from the literature.
+
+**Observation.** One row of the raw table is one *published parameter set* for one planet, so a planet can appear many times. We keep the row marked `default_flag = 1`, so in the analysed data **one observation = one confirmed planet** (its default parameter set). **Context.** All confirmed exoplanets known to the archive, i.e. planets that were *detectable*, not a random sample of all planets.
+
+| Variable | Meaning | Unit / type |
+|---|---|---|
+| `discoverymethod` | detection technique | categorical |
+| `sy_snum` | number of stars in the host system | count → categorical |
+| `disc_year` | year of discovery | year → period (`disc_era`) |
+| `ttv_flag`, `pl_controv_flag` | transit timing variations detected; controversial planet | 0/1 |
+| `pl_rade`, `pl_bmasse` | planet radius, planet (best) mass | Earth radii, Earth masses |
+| `pl_orbper`, `pl_orbsmax` | orbital period, semi-major axis | days, AU |
+| `pl_eqt` | equilibrium temperature (*calculated*, not measured) | K |
+| `st_teff`, `st_mass` | host star effective temperature, mass | K, solar masses |
+
+
 # 2 Data Preparation
 ## 2.1 Data Import and Structure Examination
 The dataset was imported into R from the NASA Exoplanet Archive Planetary Systems (PS) table. The dataset initially contains tens of thousands of rows and multiple columns capturing orbital, stellar, and physical planetary attributes. Inspecting the data structure using str() confirms that numerical variables (such as planet radius pl_rade, orbital period pl_orbper, mass pl_bmasse, and semi-major axis pl_orbsmax) are stored as double-precision floating-point numbers (num), while categorical identifiers (such as discovery method discoverymethod and stellar multiplicity sy_snum) were initially read as character or integer types.

@@ -743,7 +743,6 @@ cat("Radial Velocity:", length(rv), "\n")
 cat("Imaging:", length(imaging), "\n")
 ```
 
-Transit has more than 17,000 observations, while Imaging has about 101, so the Imaging results should be interpreted more carefully.
 
 ### Boxplot
 
